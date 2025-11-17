@@ -1,0 +1,36 @@
+{
+  "objective": "Third-year Computer Science student with a strong foundation in full-stack development and a passion for application security. Eager to apply software engineering skills and knowledge from Information Security coursework to identifying, assessing, and mitigating vulnerabilities in a hands-on internship.",
+  "relavent-courses": "Intro to Information Security, Software Design, Algorithms Design and Analysis, Data Structures and Analysis, Operating Systems, Software Tools and Systems Programming",
+  "jobs": [
+    {
+      "job-title": "Deck Supervisor",
+      "job-start-date": "Jan. 2025",
+      "job-end-date": "Present",
+      "job-employer": "City of Brampton",
+      "job-location": "Brampton, ON",
+      "job-points": [
+        "Developed and managed lesson schematics for a team of 6 instructors, ensuring smooth operation.",
+        "Acted as the primary point of contact for up to 75 concurrent customers, addressing inquiries and resolving complaints promptly (Strong communication skills for reporting)."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "project-title": "Deck Supervisor Admnistrative Web Tool",
+      "project-tech": "Firebase, Docker, Google Cloud, Flask, Pandas",
+      "project-date": "May. 2025 -- Present",
+      "project-points": [
+        "Built a scalable full-stack web application and backend API to automate class scheduling and roster generation.",
+        "Implemented security controls including user authentication with Firebase Auth and database security rules to ensure users could only access their own data.",
+        "Engineered backend services using Python (Flask) for data processing, deployed as a containerized service using Docker and Google Cloud Run.",
+        "Designed and developed an intuitive, responsive web interface with JavaScript and Firebase."
+      ]
+    }
+  ],
+  "skill_categories": [
+    {
+      "cat-title": "Languages",
+      "cat-skills": "Python, JavaScript, SQL, Go, Java, C, HTML, CSS"
+    }
+  ]
+}
