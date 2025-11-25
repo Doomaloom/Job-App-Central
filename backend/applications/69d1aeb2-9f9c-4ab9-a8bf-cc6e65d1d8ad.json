@@ -1,0 +1,35 @@
+{
+  "id": "69d1aeb2-9f9c-4ab9-a8bf-cc6e65d1d8ad",
+  "jobTitle": "New Job Application",
+  "company": "New Company",
+  "applicationStatus": "applied",
+  "jobDescription": "",
+  "resume": {
+    "objective": "This is a candidate summary.",
+    "relevantCourses": "These are my relavent courses.",
+    "jobs": [
+      {
+        "jobTitle": "New Job",
+        "jobStartDate": "",
+        "jobEndDate": "",
+        "jobEmployer": "",
+        "jobLocation": "",
+        "jobPoints": []
+      }
+    ],
+    "projects": [
+      {
+        "projectTitle": "New Project",
+        "projectTech": "",
+        "projectDate": "",
+        "projectPoints": []
+      }
+    ],
+    "skillCategories": [
+      {
+        "catTitle": "New Category",
+        "catSkills": ""
+      }
+    ]
+  }
+}
