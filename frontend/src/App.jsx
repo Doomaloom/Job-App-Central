@@ -255,7 +255,8 @@ function App() {
       company: "New Company",
       applicationStatus: "applied",
       jobDescription: "",
-      resume: JSON.parse(JSON.stringify(profile.resume || defaultResume())),
+      // Start with an empty resume; user can selectively import from profile
+      resume: defaultResume(),
     };
     try {
       const response = await fetch('/api/applications', {
@@ -284,6 +285,28 @@ function App() {
     });
   };
 
+  const handleDeleteApplication = async (appId) => {
+    const confirmed = window.confirm('Are you sure you want to delete this application? This cannot be undone.');
+    if (!confirmed) return;
+    try {
+      const response = await fetch(`/api/applications/${appId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      setApplications((prev) => prev.filter((app) => app.id !== appId));
+      // If currently viewing the deleted app, navigate home
+      const currentId = window.location.pathname.split('/').pop();
+      if (currentId === appId) {
+        navigate('/');
+      }
+    } catch (e) {
+      console.error("Failed to delete application:", e);
+      alert('Failed to delete application.');
+    }
+  };
+
   useEffect(() => {
     fetchApplications();
   }, []);
@@ -303,13 +326,30 @@ function App() {
         <ul style={{ listStyle: 'none', padding: 0 }}>
           {applications.map((app) => (
             <li key={app.id} style={{ marginBottom: '10px' }}>
-              <Link to={`/application/${app.id}`} style={{ textDecoration: 'none', color: '#333' }}>
-                <div style={{ padding: '10px', backgroundColor: '#e0e0e0', borderRadius: '5px' }}>
-                  <strong>{app.jobTitle}</strong>
-                  <p style={{ margin: 0, fontSize: '0.9em' }}>{app.company}</p>
-                  <p style={{ margin: 0, fontSize: '0.8em', color: '#666' }}>Status: {app.applicationStatus}</p>
-                </div>
-              </Link>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+                <Link to={`/application/${app.id}`} style={{ textDecoration: 'none', color: '#333', flexGrow: 1 }}>
+                  <div style={{ padding: '10px', backgroundColor: '#e0e0e0', borderRadius: '5px' }}>
+                    <strong>{app.jobTitle}</strong>
+                    <p style={{ margin: 0, fontSize: '0.9em' }}>{app.company}</p>
+                    <p style={{ margin: 0, fontSize: '0.8em', color: '#666' }}>Status: {app.applicationStatus}</p>
+                  </div>
+                </Link>
+                <button
+                  onClick={() => handleDeleteApplication(app.id)}
+                  style={{
+                    minWidth: '32px',
+                    border: '1px solid #c00',
+                    background: '#fff0f0',
+                    color: '#c00',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                  }}
+                  aria-label={`Delete ${app.jobTitle}`}
+                  title="Delete application"
+                >
+                  ×
+                </button>
+              </div>
             </li>
           ))}
         </ul>
@@ -326,6 +366,7 @@ function App() {
                 activeTab={activeTab} 
                 setActiveTab={setActiveTab} 
                 onApplicationUpdate={fetchApplications} // Pass refresh function to update sidebar
+                profileResume={profile.resume || defaultResume()}
               />
             } 
           />
@@ -340,7 +381,7 @@ function App() {
 }
 
 // Component to display specific application details with tabs
-function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate }) {
+function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profileResume }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [application, setApplication] = useState(null);
@@ -496,7 +537,13 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate }) {
       {/* Tab Content */}
       <div>
         {activeTab === 'details' && <JobDetailsTab application={application} onSave={handleSaveApplication} />}
-        {activeTab === 'resume' && <ResumeEditor application={application} onResumeChange={handleResumeChange}/>}
+        {activeTab === 'resume' && (
+          <ResumeEditor
+            application={application}
+            onResumeChange={handleResumeChange}
+            baseResume={profileResume}
+          />
+        )}
         {activeTab === 'coverletter' && <CoverLetterTab application={application} />}
       </div>
     </div>

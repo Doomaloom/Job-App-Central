@@ -28,43 +28,43 @@ type ResumeData struct {
 
 // Job represents a single job entry in the resume.
 type Job struct {
-	JobTitle    string   `json:"jobTitle"`
+	JobTitle     string   `json:"jobTitle"`
 	JobStartDate string   `json:"jobStartDate"`
-	JobEndDate  string   `json:"jobEndDate"`
-	JobEmployer string   `json:"jobEmployer"`
-	JobLocation string   `json:"jobLocation"`
-	JobPoints   []string `json:"jobPoints"`
+	JobEndDate   string   `json:"jobEndDate"`
+	JobEmployer  string   `json:"jobEmployer"`
+	JobLocation  string   `json:"jobLocation"`
+	JobPoints    []string `json:"jobPoints"`
 }
 
 // Project represents a single project entry in the resume.
 type Project struct {
-	ProjectTitle string   `json:"projectTitle"`
-	ProjectTech  string   `json:"projectTech"`
-	ProjectDate  string   `json:"projectDate"`
+	ProjectTitle  string   `json:"projectTitle"`
+	ProjectTech   string   `json:"projectTech"`
+	ProjectDate   string   `json:"projectDate"`
 	ProjectPoints []string `json:"projectPoints"`
 }
 
 // SkillCategory represents a category of skills.
 type SkillCategory struct {
-	CatTitle string `json:"catTitle"`
+	CatTitle  string `json:"catTitle"`
 	CatSkills string `json:"catSkills"`
 }
 
 // Application represents a full job application, including resume data.
 type Application struct {
-	ID             string    `json:"id"`
-	JobTitle       string    `json:"jobTitle"`
-	Company        string    `json:"company"`
-	ApplicationStatus string `json:"applicationStatus"`
-	JobDescription string    `json:"jobDescription"`
-	Resume         ResumeData `json:"resume"`
+	ID                string     `json:"id"`
+	JobTitle          string     `json:"jobTitle"`
+	Company           string     `json:"company"`
+	ApplicationStatus string     `json:"applicationStatus"`
+	JobDescription    string     `json:"jobDescription"`
+	Resume            ResumeData `json:"resume"`
 }
 
 // ApplicationSummary represents a brief overview of a job application for listing.
 type ApplicationSummary struct {
-	ID             string `json:"id"`
-	JobTitle       string `json:"jobTitle"`
-	Company        string `json:"company"`
+	ID                string `json:"id"`
+	JobTitle          string `json:"jobTitle"`
+	Company           string `json:"company"`
 	ApplicationStatus string `json:"applicationStatus"`
 }
 
@@ -196,9 +196,9 @@ func handleApplications(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			summaries = append(summaries, ApplicationSummary{
-				ID:             app.ID,
-				JobTitle:       app.JobTitle,
-				Company:        app.Company,
+				ID:                app.ID,
+				JobTitle:          app.JobTitle,
+				Company:           app.Company,
 				ApplicationStatus: app.ApplicationStatus,
 			})
 		}
@@ -237,7 +237,6 @@ func handleApplicationByID(w http.ResponseWriter, r *http.Request) {
 	}
 	// Remove trailing slash if present
 	id = strings.TrimSuffix(id, "/")
-
 
 	switch r.Method {
 	case http.MethodGet:
@@ -282,6 +281,23 @@ func handleApplicationByID(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(updatedApp)
 
+	case http.MethodDelete:
+		// Verify it exists before delete to return proper status
+		if _, err := getApplication(id); err != nil {
+			if os.IsNotExist(err) {
+				http.Error(w, "Application not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "Failed to check existing application: "+err.Error(), http.StatusInternalServerError)
+			}
+			return
+		}
+
+		if err := deleteApplication(id); err != nil {
+			http.Error(w, "Failed to delete application: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -309,6 +325,18 @@ func getApplication(id string) (Application, error) {
 		return Application{}, fmt.Errorf("failed to unmarshal application: %w", err)
 	}
 	return app, nil
+}
+
+// deleteApplication removes the JSON file for the given application ID.
+func deleteApplication(id string) error {
+	filePath := filepath.Join(applicationsDir, id+".json")
+	if err := os.Remove(filePath); err != nil {
+		if os.IsNotExist(err) {
+			return err
+		}
+		return fmt.Errorf("failed to delete application file: %w", err)
+	}
+	return nil
 }
 
 // readTemplate reads a LaTeX template file from the Resume-Stubs directory.
@@ -371,7 +399,7 @@ func generateLatexContent(data ResumeData) (string, error) {
 
 	// Fill Education (relevant courses)
 	educationSection := replaceContent(educationTemplate, "%begin-relavent-courses%", "%end-relavent-courses%", data.RelevantCourses)
-	
+
 	// Fill Jobs
 	jobsContent := ""
 	for _, job := range data.Jobs {
@@ -418,13 +446,11 @@ func generateLatexContent(data ResumeData) (string, error) {
 	}
 	skillsSection := replaceContent(skillsTemplate, "%begin-skills-list%", "%end-skills-list%", skillsListContent)
 
-
 	// Combine all sections
 	finalLatex := headTemplate
-	
+
 	// Better insertion points for sections
 	finalLatex = strings.Replace(finalLatex, `\begin{document}`, `\begin{document}`+"\n"+objectiveSection+"\n"+educationSection+"\n"+workSection+"\n"+projectsSection+"\n"+skillsSection, 1)
-
 
 	// Remove all remaining begin/end comments that might be empty or missed
 	re := regexp.MustCompile(`(?s)%begin-.*?%`)
@@ -432,8 +458,5 @@ func generateLatexContent(data ResumeData) (string, error) {
 	re = regexp.MustCompile(`(?s)%end-.*?%`)
 	finalLatex = re.ReplaceAllString(finalLatex, "")
 
-
 	return finalLatex, nil
 }
-
-

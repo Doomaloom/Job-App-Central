@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import WorkExperienceSection from './WorkExperienceSection';
@@ -7,7 +7,7 @@ import SkillsSection from './SkillsSection';
 import ObjectiveSection from './ObjectiveSection'; // Import the new component
 import EducationSection from './EducationSection'; // Import the new component
 
-function ResumeEditor({ application, onResumeChange, initKey }) {
+function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
     const [resumeData, setResumeData] = useState(null);
     const [loadedKey, setLoadedKey] = useState(null);
     const [relevantCourses, setRelevantCourses] = useState([]);
@@ -39,6 +39,127 @@ function ResumeEditor({ application, onResumeChange, initKey }) {
             setRelevantCourses(courses);
         }
     }, [application, initKey, loadedKey, resumeData]);
+
+    const normalizedBaseResume = useMemo(() => {
+        if (!baseResume) {
+            return {
+                objective: '',
+                relevantCourses: [],
+                jobs: [],
+                projects: [],
+                skillCategories: [],
+            };
+        }
+        const courses = Array.isArray(baseResume.relevantCourses)
+            ? baseResume.relevantCourses
+            : (baseResume.relevantCourses || '').split(',').map((c) => c.trim()).filter(Boolean);
+        const jobs = (baseResume.jobs || []).map((job, idx) => ({
+            jobTitle: job.jobTitle || '',
+            jobEmployer: job.jobEmployer || '',
+            jobLocation: job.jobLocation || '',
+            jobStartDate: job.jobStartDate || '',
+            jobEndDate: job.jobEndDate || '',
+            jobPoints: Array.isArray(job.jobPoints)
+                ? job.jobPoints.filter(Boolean)
+                : (job.jobPoints || '').split('\n').map((p) => p.trim()).filter(Boolean),
+            id: job.id || `base-job-${idx}`,
+        }));
+        const projects = (baseResume.projects || []).map((proj, idx) => ({
+            projectTitle: proj.projectTitle || '',
+            projectTech: Array.isArray(proj.projectTech)
+                ? proj.projectTech.filter(Boolean)
+                : (proj.projectTech || '').split(',').map((t) => t.trim()).filter(Boolean),
+            projectDate: proj.projectDate || '',
+            projectPoints: Array.isArray(proj.projectPoints)
+                ? proj.projectPoints.filter(Boolean)
+                : (proj.projectPoints || '').split('\n').map((p) => p.trim()).filter(Boolean),
+            id: proj.id || `base-project-${idx}`,
+        }));
+        const skills = (baseResume.skillCategories || []).map((cat, idx) => ({
+            catTitle: cat.catTitle || '',
+            catSkills: Array.isArray(cat.catSkills)
+                ? cat.catSkills.filter(Boolean)
+                : (cat.catSkills || '').split(',').map((s) => s.trim()).filter(Boolean),
+            id: cat.id || `base-skill-${idx}`,
+        }));
+        return {
+            objective: baseResume.objective || '',
+            relevantCourses: courses,
+            jobs,
+            projects,
+            skillCategories: skills,
+        };
+    }, [baseResume]);
+
+    const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+
+    const handleUseBaseObjective = () => {
+        setResumeData((prev) => {
+            const newData = { ...prev, objective: normalizedBaseResume.objective };
+            onResumeChange(newData);
+            return newData;
+        });
+    };
+
+    const handleAddCourseFromBase = (course) => {
+        if (!course) return;
+        setRelevantCourses((prev) => {
+            if (prev.map((c) => c.toLowerCase()).includes(course.toLowerCase())) return prev;
+            const updated = [...prev, course];
+            setResumeData((prevData) => {
+                const newData = { ...prevData, relevantCourses: updated.join(', ') };
+                onResumeChange(newData);
+                return newData;
+            });
+            return updated;
+        });
+    };
+
+    const handleAddJobFromBase = (job) => {
+        if (!job) return;
+        setResumeData((prev) => {
+            const copy = {
+                ...job,
+                id: makeId('job'),
+                jobPoints: (job.jobPoints || []).slice(),
+            };
+            const existing = Array.isArray(prev.jobs) ? prev.jobs : [];
+            const newData = { ...prev, jobs: [...existing, copy] };
+            onResumeChange(newData);
+            return newData;
+        });
+    };
+
+    const handleAddProjectFromBase = (proj) => {
+        if (!proj) return;
+        setResumeData((prev) => {
+            const copy = {
+                ...proj,
+                id: makeId('project'),
+                projectPoints: (proj.projectPoints || []).slice(),
+                projectTech: Array.isArray(proj.projectTech) ? proj.projectTech.slice() : [],
+            };
+            const existing = Array.isArray(prev.projects) ? prev.projects : [];
+            const newData = { ...prev, projects: [...existing, copy] };
+            onResumeChange(newData);
+            return newData;
+        });
+    };
+
+    const handleAddSkillCatFromBase = (cat) => {
+        if (!cat) return;
+        setResumeData((prev) => {
+            const copy = {
+                ...cat,
+                id: makeId('skill'),
+                catSkills: Array.isArray(cat.catSkills) ? cat.catSkills.slice() : [],
+            };
+            const existing = Array.isArray(prev.skillCategories) ? prev.skillCategories : [];
+            const newData = { ...prev, skillCategories: [...existing, copy] };
+            onResumeChange(newData);
+            return newData;
+        });
+    };
 
     const handleDragEnd = (event) => {
         const { active, over } = event;
@@ -210,6 +331,76 @@ function ResumeEditor({ application, onResumeChange, initKey }) {
                 objective={resumeData.objective}
                 onUpdateObjective={handleUpdateObjective}
             />
+            <div style={{ marginBottom: '16px', padding: '12px', border: '1px solid #ddd', borderRadius: '10px', background: '#f9fbff' }}>
+                <h3 style={{ marginTop: 0 }}>Import From Profile Resume</h3>
+                <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        <strong>Objective</strong>
+                        <div style={{ color: '#555', fontSize: '0.95em' }}>{normalizedBaseResume.objective || 'No objective saved in profile.'}</div>
+                    </div>
+                    <button type="button" onClick={handleUseBaseObjective} disabled={!normalizedBaseResume.objective}>Use Objective</button>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                    <strong>Relevant Courses</strong>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                        {normalizedBaseResume.relevantCourses.length === 0 && <span style={{ color: '#777' }}>No courses saved.</span>}
+                        {normalizedBaseResume.relevantCourses.map((course, idx) => (
+                            <span key={`base-course-${idx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '999px', background: '#eef3ff' }}>
+                                {course}
+                                <button type="button" onClick={() => handleAddCourseFromBase(course)} style={{ border: '1px solid #ccc', background: '#fff', borderRadius: '6px', padding: '2px 6px', cursor: 'pointer' }}>Add</button>
+                            </span>
+                        ))}
+                    </div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                    <strong>Work Experience</strong>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                        {normalizedBaseResume.jobs.length === 0 && <span style={{ color: '#777' }}>No jobs saved.</span>}
+                        {normalizedBaseResume.jobs.map((job) => (
+                            <div key={job.id} style={{ border: '1px solid #eee', borderRadius: '8px', padding: '8px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontWeight: 600 }}>{job.jobTitle || 'Untitled Job'}</div>
+                                    <div style={{ color: '#555', fontSize: '0.9em' }}>{job.jobEmployer}</div>
+                                </div>
+                                <button type="button" onClick={() => handleAddJobFromBase(job)}>Add</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div style={{ marginBottom: '10px' }}>
+                    <strong>Projects</strong>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                        {normalizedBaseResume.projects.length === 0 && <span style={{ color: '#777' }}>No projects saved.</span>}
+                        {normalizedBaseResume.projects.map((proj) => (
+                            <div key={proj.id} style={{ border: '1px solid #eee', borderRadius: '8px', padding: '8px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontWeight: 600 }}>{proj.projectTitle || 'Untitled Project'}</div>
+                                    <div style={{ color: '#555', fontSize: '0.9em' }}>{proj.projectDate}</div>
+                                </div>
+                                <button type="button" onClick={() => handleAddProjectFromBase(proj)}>Add</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div>
+                    <strong>Skill Categories</strong>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                        {normalizedBaseResume.skillCategories.length === 0 && <span style={{ color: '#777' }}>No skill categories saved.</span>}
+                        {normalizedBaseResume.skillCategories.map((cat) => (
+                            <div key={cat.id} style={{ border: '1px solid #eee', borderRadius: '8px', padding: '8px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontWeight: 600 }}>{cat.catTitle || 'Untitled Category'}</div>
+                                    <div style={{ color: '#555', fontSize: '0.9em' }}>
+                                        {(Array.isArray(cat.catSkills) ? cat.catSkills : []).slice(0, 3).join(', ')}
+                                        {(Array.isArray(cat.catSkills) && cat.catSkills.length > 3) ? '…' : ''}
+                                    </div>
+                                </div>
+                                <button type="button" onClick={() => handleAddSkillCatFromBase(cat)}>Add</button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
             <div style={{ marginBottom: '16px' }}>
                 <h3>Relevant Courses</h3>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
