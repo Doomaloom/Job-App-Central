@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import EditSkillCategoryForm from './EditSkillCategoryForm';
 
-function SkillsSection({ skillCategories, onUpdateSkillCategory, onRemoveSkillCategory, onAddSkillCategory }) {
+function SkillsSection({ skillCategories, onUpdateSkillCategory, onRemoveSkillCategory, onAddSkillCategory, baseSkillCategories = [], onImportSkillCategory, isSkillCategoryImported }) {
     const [editingSkillCatId, setEditingSkillCatId] = useState(null);
 
     const handleSaveSkillCategory = (updatedSkillCat) => {
@@ -20,6 +20,30 @@ function SkillsSection({ skillCategories, onUpdateSkillCategory, onRemoveSkillCa
     return (
         <div>
             <h3>Skills</h3>
+            {baseSkillCategories.length > 0 && onImportSkillCategory && (
+                <div style={{ marginBottom: '10px', padding: '8px', border: '1px dashed #ccc', borderRadius: '8px', background: '#fafafa' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '6px' }}>Import from Profile</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {baseSkillCategories.map((cat) => {
+                            const alreadyAdded = isSkillCategoryImported ? isSkillCategoryImported(cat) : false;
+                            return (
+                                <div key={cat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                                    <div>
+                                        <div style={{ fontWeight: 600 }}>{cat.catTitle || 'Untitled Category'}</div>
+                                        <div style={{ color: '#555', fontSize: '0.9em' }}>
+                                            {(Array.isArray(cat.catSkills) ? cat.catSkills : []).slice(0, 3).join(', ')}
+                                            {(Array.isArray(cat.catSkills) && cat.catSkills.length > 3) ? '…' : ''}
+                                        </div>
+                                    </div>
+                                    <button type="button" onClick={() => onImportSkillCategory(cat)} disabled={alreadyAdded}>
+                                        {alreadyAdded ? 'Added' : 'Add'}
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
             <button onClick={onAddSkillCategory} style={{ marginBottom: '10px' }}>Add New Skill Category</button>
             <div>
                 {(skillCategories || []).map(skillCat => (

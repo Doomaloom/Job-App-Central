@@ -3,7 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import SortableItem from './SortableItem';
 import EditProjectForm from './EditProjectForm';
 
-function ProjectsSection({ projects, onUpdateProject, onRemoveProject, onAddProject }) {
+function ProjectsSection({ projects, onUpdateProject, onRemoveProject, onAddProject, baseProjects = [], onImportProject, isProjectImported }) {
     const [editingProjectId, setEditingProjectId] = useState(null);
 
     const handleSaveProject = (updatedProject) => {
@@ -22,6 +22,27 @@ function ProjectsSection({ projects, onUpdateProject, onRemoveProject, onAddProj
     return (
         <div>
             <h3>Projects</h3>
+            {baseProjects.length > 0 && onImportProject && (
+                <div style={{ marginBottom: '10px', padding: '8px', border: '1px dashed #ccc', borderRadius: '8px', background: '#fafafa' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '6px' }}>Import from Profile</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {baseProjects.map((proj) => {
+                            const alreadyAdded = isProjectImported ? isProjectImported(proj) : false;
+                            return (
+                                <div key={proj.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                                    <div>
+                                        <div style={{ fontWeight: 600 }}>{proj.projectTitle || 'Untitled Project'}</div>
+                                        <div style={{ color: '#555', fontSize: '0.9em' }}>{proj.projectDate}</div>
+                                    </div>
+                                    <button type="button" onClick={() => onImportProject(proj)} disabled={alreadyAdded}>
+                                        {alreadyAdded ? 'Added' : 'Add'}
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
             <button onClick={onAddProject} style={{ marginBottom: '10px' }}>Add New Project</button>
             <SortableContext
                 items={projects.map(p => p.id)}

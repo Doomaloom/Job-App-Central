@@ -1,0 +1,19 @@
+{
+  "id": "e5b9129b-d286-4e27-976f-a9ac506a16d2",
+  "jobTitle": "New Job Application",
+  "company": "New Company",
+  "applicationStatus": "applied",
+  "jobDescription": "",
+  "resume": {
+    "name": "",
+    "number": "",
+    "email": "",
+    "linkedin": "",
+    "github": "",
+    "objective": "",
+    "relevantCourses": [],
+    "jobs": [],
+    "projects": [],
+    "skillCategories": []
+  }
+}

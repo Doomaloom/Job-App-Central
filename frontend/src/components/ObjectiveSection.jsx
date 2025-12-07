@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function ObjectiveSection({ objective, onUpdateObjective }) {
+function ObjectiveSection({ objective, onUpdateObjective, baseObjective }) {
     const [editing, setEditing] = useState(false);
     const [objectiveText, setObjectiveText] = useState('');
 
@@ -21,6 +21,17 @@ function ObjectiveSection({ objective, onUpdateObjective }) {
     return (
         <div style={{ padding: '10px', border: '1px solid #ccc', marginBottom: '10px', backgroundColor: 'white' }}>
             <h3>Candidate Summary</h3>
+            {baseObjective && (
+                <div style={{ marginBottom: '8px' }}>
+                    <button
+                        type="button"
+                        onClick={() => onUpdateObjective(baseObjective)}
+                        disabled={objective === baseObjective}
+                    >
+                        {objective === baseObjective ? 'Using Profile Objective' : 'Use Profile Objective'}
+                    </button>
+                </div>
+            )}
             {editing ? (
                 <div>
                     <textarea

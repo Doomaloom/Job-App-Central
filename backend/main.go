@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/google/uuid"
@@ -19,8 +19,13 @@ const applicationsDir = "applications"
 
 // ResumeData represents the overall structure of the resume data.
 type ResumeData struct {
+	Name            string          `json:"name"`
+	Phone           string          `json:"number"`
+	Email           string          `json:"email"`
+	LinkedIn        string          `json:"linkedin"`
+	Github          string          `json:"github"`
 	Objective       string          `json:"objective"`
-	RelevantCourses string          `json:"relevantCourses"`
+	RelevantCourses []string        `json:"relevantCourses"`
 	Jobs            []Job           `json:"jobs"`
 	Projects        []Project       `json:"projects"`
 	SkillCategories []SkillCategory `json:"skillCategories"`
@@ -46,8 +51,8 @@ type Project struct {
 
 // SkillCategory represents a category of skills.
 type SkillCategory struct {
-	CatTitle  string `json:"catTitle"`
-	CatSkills string `json:"catSkills"`
+	CatTitle  string   `json:"catTitle"`
+	CatSkills []string `json:"catSkills"`
 }
 
 // Application represents a full job application, including resume data.
@@ -92,10 +97,16 @@ func handleGeneratePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var app Application
-	err := json.NewDecoder(r.Body).Decode(&app)
+	latexPath, err := exec.LookPath("pdflatex")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "pdflatex not found in PATH; please install TeX Live (package name on Arch/Manjaro: texlive-bin) and ensure pdflatex is available", http.StatusInternalServerError)
+		return
+	}
+
+	var app Application
+	err2 := json.NewDecoder(r.Body).Decode(&app)
+	if err2 != nil {
+		http.Error(w, err2.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -146,12 +157,11 @@ func handleGeneratePDF(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Compile the LaTeX file to PDF
-	cmd := exec.Command("pdflatex", "-output-directory="+tmpDir, texFilePath)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
+	cmd := exec.Command(latexPath, "-output-directory="+tmpDir, texFilePath)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		http.Error(w, "pdflatex compilation failed: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("pdflatex compilation failed: %v\nOutput:\n%s", err, string(output))
+		http.Error(w, "pdflatex compilation failed: "+err.Error()+"\n"+string(output), http.StatusInternalServerError)
 		return
 	}
 
@@ -349,114 +359,196 @@ func readTemplate(filename string) (string, error) {
 	return string(content), nil
 }
 
+func generateApplicantHeader(data ResumeData) (string, error) {
+
+	applicantHeader := fmt.Sprintf(`
+	\begin{center}
+    \textbf{\Huge \scshape %s} \\ \vspace{1pt}
+    \small %s $|$ \href{mailto:%s}{\underline{%s}} $|$
+    \href{https:/%s}{\underline{%s}} $|$
+    \href{https:/%s}{\underline{%s}}
+	\end{center}
+		`, data.Name, data.Phone, data.Email, data.Email, data.LinkedIn, data.LinkedIn, data.Github, data.Github)
+
+	return applicantHeader, nil
+
+}
+
+func generateObjective(data ResumeData) (string, error) {
+
+	objectiveTemplate, err := readTemplate("resume_objective.tex")
+	if err != nil {
+		return "", err
+	}
+
+	objective := objectiveTemplate + data.Objective + "\n} \\end{itemize}\n"
+
+	return objective, nil
+}
+
+func generateEducation(data ResumeData) (string, error) {
+
+	educationTemplate, err := readTemplate("resume_education.tex")
+	if err != nil {
+		return "", err
+	}
+
+	var courses bytes.Buffer
+	for _, course := range data.RelevantCourses {
+		courses.WriteString(course + ", ")
+	}
+	courses.UnreadByte()
+	courses.UnreadByte()
+
+	education := educationTemplate + courses.String() + "} \n \\resumeSubHeadingListEnd"
+
+	return education, nil
+}
+
+func generateProjects(data ResumeData) (string, error) {
+
+	projectTemplate, err := readTemplate("resume_projects.tex")
+	if err != nil {
+		return "", err
+	}
+
+	var projects bytes.Buffer
+
+	for _, project := range data.Projects {
+
+		var currentProject bytes.Buffer
+		currentProject.WriteString("\\resumeProjectHeading {\\textbf {")
+
+		title := project.ProjectTitle
+		tech := project.ProjectTech
+		date := project.ProjectDate
+		points := project.ProjectPoints
+
+		currentProject.WriteString(title)
+		currentProject.WriteString("} $|$ \\emph{ \n")
+		currentProject.WriteString(tech)
+		currentProject.WriteString("}}{ \n")
+		currentProject.WriteString(date)
+		currentProject.WriteString("} \n")
+
+		currentProject.WriteString("\\resumeItemListStart")
+		for _, point := range points {
+			currentProject.WriteString("\\resumeItem{")
+			currentProject.WriteString(point)
+			currentProject.WriteString("}\n")
+		}
+		currentProject.WriteString("\\resumeItemListEnd \n")
+
+		projects.WriteString(currentProject.String())
+
+	}
+
+	projectsCompiled := projectTemplate + projects.String() + "\\resumeSubHeadingListEnd \n"
+
+	return projectsCompiled, nil
+}
+
+func generateWork(data ResumeData) (string, error) {
+
+	workTemplate, err := readTemplate("resume_work.tex")
+	if err != nil {
+		return "", err
+	}
+
+	var jobList bytes.Buffer
+
+	for _, job := range data.Jobs {
+		var currentJob bytes.Buffer
+
+		currentJob.WriteString("\\resumeSubheading \n {")
+		currentJob.WriteString(job.JobTitle)
+		currentJob.WriteString("}{")
+		currentJob.WriteString(job.JobStartDate + " -- " + job.JobEndDate)
+		currentJob.WriteString("}{")
+		currentJob.WriteString(job.JobEmployer)
+		currentJob.WriteString("}{")
+		currentJob.WriteString(job.JobLocation)
+		currentJob.WriteString("} \n \\resumeItemListStart")
+
+		points := job.JobPoints
+		for _, point := range points {
+			currentJob.WriteString("\\resumeItem{")
+			currentJob.WriteString(point)
+			currentJob.WriteString("}\n")
+		}
+		currentJob.WriteString("\\resumeItemListEnd \n")
+
+		jobList.WriteString(currentJob.String())
+
+	}
+
+	jobsCompiled := workTemplate + jobList.String() + "\\resumeSubHeadingListEnd \n"
+
+	return jobsCompiled, nil
+}
+
+func generateSkills(data ResumeData) (string, error) {
+
+	skillsTemplate, err := readTemplate("resume_skills.tex")
+	if err != nil {
+		return "", err
+	}
+
+	var skills bytes.Buffer
+	for _, skillCat := range data.SkillCategories {
+		var currentSkillCat bytes.Buffer
+
+		currentSkillCat.WriteString("\\textbf{ ")
+		currentSkillCat.WriteString(skillCat.CatTitle)
+		currentSkillCat.WriteString(" }{: ")
+		for _, skill := range skillCat.CatSkills {
+			currentSkillCat.WriteString(skill + ", ")
+		}
+		currentSkillCat.UnreadByte()
+		currentSkillCat.UnreadByte()
+		currentSkillCat.WriteString(" } \\\\ \n")
+
+		skills.WriteString(currentSkillCat.String())
+	}
+
+	compiledSkills := skillsTemplate + skills.String() + "}} \n \\end{itemize}"
+	return compiledSkills, nil
+}
+
 // generateLatexContent generates the full LaTeX content from ResumeData.
 func generateLatexContent(data ResumeData) (string, error) {
 	headTemplate, err := readTemplate("resume_head.tex")
 	if err != nil {
 		return "", err
 	}
-	objectiveTemplate, err := readTemplate("resume_objective.tex")
+
+	applicantHeader, err := generateApplicantHeader(data)
 	if err != nil {
 		return "", err
 	}
-	educationTemplate, err := readTemplate("resume_education.tex")
+	objective, err := generateObjective(data)
 	if err != nil {
 		return "", err
 	}
-	jobTemplate, err := readTemplate("resume_job.tex")
+	education, err := generateEducation(data)
 	if err != nil {
 		return "", err
 	}
-	projectTemplate, err := readTemplate("resume_project.tex")
+	skills, err := generateSkills(data)
 	if err != nil {
 		return "", err
 	}
-	projectsTemplate, err := readTemplate("resume_projects.tex")
+	projects, err := generateProjects(data)
 	if err != nil {
 		return "", err
 	}
-	skillsTemplate, err := readTemplate("resume_skills.tex")
-	if err != nil {
-		return "", err
-	}
-	skillCatTemplate, err := readTemplate("resume_skill_cat.tex")
-	if err != nil {
-		return "", err
-	}
-	workTemplate, err := readTemplate("resume_work.tex")
+	work, err := generateWork(data)
 	if err != nil {
 		return "", err
 	}
 
-	// Helper function to replace content within begin/end tags using regex
-	replaceContent := func(template, beginTag, endTag, content string) string {
-		re := regexp.MustCompile(fmt.Sprintf(`(?s)%s.*?%s`, regexp.QuoteMeta(beginTag), regexp.QuoteMeta(endTag)))
-		return re.ReplaceAllString(template, beginTag+content+endTag)
-	}
-
-	// Fill Objective
-	objectiveSection := replaceContent(objectiveTemplate, "%begin-objective%", "%end-objective%", data.Objective)
-
-	// Fill Education (relevant courses)
-	educationSection := replaceContent(educationTemplate, "%begin-relavent-courses%", "%end-relavent-courses%", data.RelevantCourses)
-
-	// Fill Jobs
-	jobsContent := ""
-	for _, job := range data.Jobs {
-		currentJob := jobTemplate
-		currentJob = replaceContent(currentJob, "%begin-job-title%", "%end-job-title%", job.JobTitle)
-		currentJob = replaceContent(currentJob, "%begin-job-start-date%", "%end-job-start-date%", job.JobStartDate)
-		currentJob = replaceContent(currentJob, "%begin-job-end-date%", "%end-job-end-date%", job.JobEndDate)
-		currentJob = replaceContent(currentJob, "%begin-job-employer%", "%end-job-employer%", job.JobEmployer)
-		currentJob = replaceContent(currentJob, "%begin-job-location%", "%end-job-location%", job.JobLocation)
-
-		points := ""
-		for _, point := range job.JobPoints {
-			points += fmt.Sprintf("\\resumeItem{%s}\n", point)
-		}
-		currentJob = replaceContent(currentJob, "%begin-job-points%", "%end-job-points%", points)
-		jobsContent += currentJob + "\n"
-	}
-	workSection := replaceContent(workTemplate, "%begin-work-list%", "%end-work-list%", jobsContent)
-
-	// Fill Projects
-	projectsListContent := ""
-	for _, project := range data.Projects {
-		currentProject := projectTemplate
-		currentProject = replaceContent(currentProject, "%begin-project-title%", "%end-project-title%", project.ProjectTitle)
-		currentProject = replaceContent(currentProject, "%begin-project-tech%", "%end-project-tech%", project.ProjectTech)
-		currentProject = replaceContent(currentProject, "%begin-project-date%", "%end-project-date%", project.ProjectDate)
-
-		points := ""
-		for _, point := range project.ProjectPoints {
-			points += fmt.Sprintf("\\resumeItem{%s}\n", point)
-		}
-		currentProject = replaceContent(currentProject, "%begin-project-points%", "%end-project-points%", points)
-		projectsListContent += currentProject + "\n"
-	}
-	projectsSection := replaceContent(projectsTemplate, "%begin-projects-list%", "%end-projects-list%", projectsListContent)
-
-	// Fill Skills
-	skillsListContent := ""
-	for _, skillCat := range data.SkillCategories {
-		currentSkillCat := skillCatTemplate
-		currentSkillCat = replaceContent(currentSkillCat, "%begin-cat-title%", "%end-cat-title%", skillCat.CatTitle)
-		currentSkillCat = replaceContent(currentSkillCat, "%begin-cat-skills%", "%end-cat-skills%", skillCat.CatSkills)
-		skillsListContent += currentSkillCat
-	}
-	skillsSection := replaceContent(skillsTemplate, "%begin-skills-list%", "%end-skills-list%", skillsListContent)
-
-	// Combine all sections
-	finalLatex := headTemplate
-
-	// Better insertion points for sections
-	finalLatex = strings.Replace(finalLatex, `\begin{document}`, `\begin{document}`+"\n"+objectiveSection+"\n"+educationSection+"\n"+workSection+"\n"+projectsSection+"\n"+skillsSection, 1)
-
-	// Remove all remaining begin/end comments that might be empty or missed
-	re := regexp.MustCompile(`(?s)%begin-.*?%`)
-	finalLatex = re.ReplaceAllString(finalLatex, "")
-	re = regexp.MustCompile(`(?s)%end-.*?%`)
-	finalLatex = re.ReplaceAllString(finalLatex, "")
+	finalLatex := headTemplate + applicantHeader + objective + education + skills + projects + work + "\\end{document}"
+	fmt.Println(finalLatex)
 
 	return finalLatex, nil
 }

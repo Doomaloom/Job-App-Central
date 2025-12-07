@@ -79,7 +79,7 @@ function EditSkillCategoryForm({ skillCategory, onSave, onCancel }) {
         onSave({
             ...skillCategory,
             catTitle,
-            catSkills: skills.join(', '),
+            catSkills: skills,
         });
     };
 

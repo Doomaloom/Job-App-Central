@@ -5,10 +5,86 @@ import ResumeEditor from './components/ResumeEditor'; // Import the new componen
 
 const defaultResume = () => ({
   objective: '',
-  relevantCourses: '',
+  relevantCourses: [],
   jobs: [],
   projects: [],
   skillCategories: [],
+});
+
+const defaultProfile = () => ({
+  name: 'Your Name',
+  role: 'Applicant',
+  email: 'you@example.com',
+  number: '',
+  linkedin: '',
+  github: '',
+  location: '',
+  bio: '',
+  resume: defaultResume(),
+});
+
+const normalizeList = (value, delimiter = ',') => {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value !== 'string') return [];
+  return value
+    .split(delimiter)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+};
+
+const normalizeResumeForBackend = (resume = defaultResume()) => {
+  const safeResume = resume || {};
+  return {
+    ...defaultResume(),
+    ...safeResume,
+    relevantCourses: normalizeList(safeResume.relevantCourses, ','),
+    jobs: (safeResume.jobs || []).map((job) => ({
+      ...job,
+      jobPoints: normalizeList(job.jobPoints, '\n'),
+    })),
+    projects: (safeResume.projects || []).map((project) => ({
+      ...project,
+      projectTech: Array.isArray(project.projectTech)
+        ? project.projectTech.filter(Boolean).join(', ')
+        : (project.projectTech || ''),
+      projectPoints: normalizeList(project.projectPoints, '\n'),
+    })),
+    skillCategories: (safeResume.skillCategories || []).map((cat) => ({
+      ...cat,
+      catSkills: normalizeList(cat.catSkills, ','),
+    })),
+  };
+};
+
+const stripEditorIds = (resume) => ({
+  ...resume,
+  jobs: (resume.jobs || []).map(({ id, ...rest }) => rest),
+  projects: (resume.projects || []).map(({ id, ...rest }) => rest),
+  skillCategories: (resume.skillCategories || []).map(({ id, ...rest }) => rest),
+});
+
+const normalizeApplicationForBackend = (application) => ({
+  ...application,
+  resume: normalizeResumeForBackend(application?.resume),
+});
+
+const normalizeHandleOrUrl = (value, basePath) => {
+  if (!value) return '';
+  const trimmed = value.trim();
+  const withoutAt = trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
+  const noProto = withoutAt.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+  if (noProto.includes('linkedin.com')) return noProto;
+  if (noProto.includes('github.com')) return noProto;
+  return `${basePath}/${noProto}`;
+};
+
+const mergeProfileHeader = (resume, profile) => ({
+  ...(resume || defaultResume()),
+  name: profile?.name || '',
+  number: profile?.number || '',
+  email: profile?.email || '',
+  linkedin: normalizeHandleOrUrl(profile?.linkedin || '', 'linkedin.com/in'),
+  github: normalizeHandleOrUrl(profile?.github || '', 'github.com'),
 });
 
 // Placeholder Component for Cover Letter Tab
@@ -64,6 +140,7 @@ const ProfilePage = ({ profile, onUpdate }) => {
 
   useEffect(() => {
     setLocalProfile({
+      ...defaultProfile(),
       ...profile,
       resume: profile.resume || defaultResume(),
     });
@@ -129,6 +206,16 @@ const ProfilePage = ({ profile, onUpdate }) => {
           />
         </label>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontWeight: 600 }}>Phone</span>
+          <input
+            type="text"
+            name="number"
+            value={localProfile.number}
+            onChange={handleChange}
+            style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <span style={{ fontWeight: 600 }}>Email</span>
           <input
             type="email"
@@ -136,6 +223,28 @@ const ProfilePage = ({ profile, onUpdate }) => {
             value={localProfile.email}
             onChange={handleChange}
             required
+            style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontWeight: 600 }}>LinkedIn URL</span>
+          <input
+            type="text"
+            name="linkedin"
+            value={localProfile.linkedin}
+            onChange={handleChange}
+            placeholder="https://linkedin.com/in/your-handle"
+            style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
+          />
+        </label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontWeight: 600 }}>GitHub URL</span>
+          <input
+            type="text"
+            name="github"
+            value={localProfile.github}
+            onChange={handleChange}
+            placeholder="https://github.com/your-handle"
             style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}
           />
         </label>
@@ -209,19 +318,13 @@ function App() {
     try {
       const stored = localStorage.getItem('jobapp_profile');
       if (stored) {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        return { ...defaultProfile(), ...parsed, resume: parsed.resume || defaultResume() };
       }
     } catch (e) {
       console.warn('Could not read profile from localStorage', e);
     }
-    return {
-      name: 'Your Name',
-      role: 'Applicant',
-      email: 'you@example.com',
-      location: '',
-      bio: '',
-      resume: defaultResume(),
-    };
+    return defaultProfile();
   });
   const navigate = useNavigate();
 
@@ -255,16 +358,17 @@ function App() {
       company: "New Company",
       applicationStatus: "applied",
       jobDescription: "",
-      // Start with an empty resume; user can selectively import from profile
-      resume: defaultResume(),
+      // Start with an empty resume; header is seeded from profile automatically
+      resume: mergeProfileHeader(defaultResume(), profile),
     };
     try {
+      const payload = normalizeApplicationForBackend(newApp);
       const response = await fetch('/api/applications', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newApp),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -367,6 +471,7 @@ function App() {
                 setActiveTab={setActiveTab} 
                 onApplicationUpdate={fetchApplications} // Pass refresh function to update sidebar
                 profileResume={profile.resume || defaultResume()}
+                profileHeader={profile}
               />
             } 
           />
@@ -381,7 +486,7 @@ function App() {
 }
 
 // Component to display specific application details with tabs
-function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profileResume }) {
+function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profileResume, profileHeader }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [application, setApplication] = useState(null);
@@ -397,7 +502,9 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        setApplication(data);
+        // Always inject profile header into the resume so the backend gets it
+        const mergedResume = mergeProfileHeader(data.resume, profileHeader);
+        setApplication({ ...data, resume: mergedResume });
       } catch (e) {
         setError(e);
         console.error("Failed to fetch application detail:", e);
@@ -411,14 +518,23 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
     }
   }, [id]); // Re-fetch when ID changes
 
+  // Keep header in sync if profile changes while editing
+  useEffect(() => {
+    if (application) {
+      setApplication((prev) => ({ ...prev, resume: mergeProfileHeader(prev.resume, profileHeader) }));
+    }
+  }, [profileHeader]);
+
   const handleSaveApplication = async (updatedApp) => {
     try {
+      const resumeWithHeader = mergeProfileHeader(updatedApp.resume, profileHeader);
+      const payload = normalizeApplicationForBackend({ ...updatedApp, resume: resumeWithHeader });
       const response = await fetch(`/api/applications/${updatedApp.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updatedApp),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -438,29 +554,12 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
     if (!application) return;
 
     try {
-      // Create a copy of the application and remove temporary IDs
-      const appForPdf = JSON.parse(JSON.stringify(application)); // Deep copy
-      
-      if (appForPdf.resume) {
-        if (appForPdf.resume.jobs) {
-          appForPdf.resume.jobs = appForPdf.resume.jobs.map(job => {
-            const { id, ...rest } = job;
-            return rest;
-          });
-        }
-        if (appForPdf.resume.projects) {
-          appForPdf.resume.projects = appForPdf.resume.projects.map(proj => {
-            const { id, ...rest } = proj;
-            return rest;
-          });
-        }
-        if (appForPdf.resume.skillCategories) {
-          appForPdf.resume.skillCategories = appForPdf.resume.skillCategories.map(cat => {
-            const { id, ...rest } = cat;
-            return rest;
-          });
-        }
-      }
+      const resumeWithHeader = mergeProfileHeader(application.resume, profileHeader);
+      const normalizedApp = normalizeApplicationForBackend({ ...application, resume: resumeWithHeader });
+      const appForPdf = {
+        ...normalizedApp,
+        resume: stripEditorIds(normalizedApp.resume),
+      };
 
       const response = await fetch('/api/generate-pdf', {
         method: 'POST',
@@ -493,7 +592,7 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
 
 
   const handleResumeChange = (newResumeData) => {
-    setApplication(prevApp => ({...prevApp, resume: newResumeData}))
+    setApplication(prevApp => ({...prevApp, resume: mergeProfileHeader(newResumeData, profileHeader)}))
   }
 
   if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading application details...</div>;

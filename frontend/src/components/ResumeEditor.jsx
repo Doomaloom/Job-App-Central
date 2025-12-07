@@ -19,23 +19,50 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
             if (loadedKey === key && resumeData) {
                 return; // Avoid resetting while editing the same resume
             }
+            const courses = Array.isArray(application.resume.relevantCourses)
+                ? application.resume.relevantCourses.filter(Boolean)
+                : (application.resume.relevantCourses || '').split(',').map((c) => c.trim()).filter(Boolean);
             const resumeWithIds = {
+                ...{
+                    name: '',
+                    number: '',
+                    email: '',
+                    linkedin: '',
+                    github: '',
+                },
                 ...application.resume,
-                jobs: application.resume.jobs ? application.resume.jobs.map((job, index) => ({ ...job, id: `job-${index}` })) : [],
-                projects: application.resume.projects ? application.resume.projects.map((proj, index) => ({ ...proj, id: `project-${index}` })) : [],
+                relevantCourses: courses,
+                jobs: application.resume.jobs
+                    ? application.resume.jobs.map((job, index) => ({
+                        ...job,
+                        jobPoints: Array.isArray(job.jobPoints)
+                            ? job.jobPoints.filter(Boolean)
+                            : (job.jobPoints || '').split('\n').map((p) => p.trim()).filter(Boolean),
+                        id: job.id || `job-${index}`,
+                    }))
+                    : [],
+                projects: application.resume.projects
+                    ? application.resume.projects.map((proj, index) => ({
+                        ...proj,
+                        projectTech: Array.isArray(proj.projectTech)
+                            ? proj.projectTech.filter(Boolean)
+                            : (proj.projectTech || ''),
+                        projectPoints: Array.isArray(proj.projectPoints)
+                            ? proj.projectPoints.filter(Boolean)
+                            : (proj.projectPoints || '').split('\n').map((p) => p.trim()).filter(Boolean),
+                        id: proj.id || `project-${index}`,
+                    }))
+                    : [],
                 skillCategories: (application.resume.skillCategories || []).map((cat, index) => ({
                     ...cat,
                     catSkills: Array.isArray(cat.catSkills)
-                        ? cat.catSkills
+                        ? cat.catSkills.filter(Boolean)
                         : (cat.catSkills || '').split(',').map((s) => s.trim()).filter(Boolean),
                     id: cat.id || `skill-${index}`,
                 })),
             };
             setLoadedKey(key);
             setResumeData(resumeWithIds);
-            const courses = Array.isArray(application.resume.relevantCourses)
-                ? application.resume.relevantCourses
-                : (application.resume.relevantCourses || '').split(',').map((c) => c.trim()).filter(Boolean);
             setRelevantCourses(courses);
         }
     }, [application, initKey, loadedKey, resumeData]);
@@ -43,6 +70,11 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
     const normalizedBaseResume = useMemo(() => {
         if (!baseResume) {
             return {
+                name: '',
+                number: '',
+                email: '',
+                linkedin: '',
+                github: '',
                 objective: '',
                 relevantCourses: [],
                 jobs: [],
@@ -83,6 +115,11 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
             id: cat.id || `base-skill-${idx}`,
         }));
         return {
+            name: baseResume.name || '',
+            number: baseResume.number || '',
+            email: baseResume.email || '',
+            linkedin: baseResume.linkedin || '',
+            github: baseResume.github || '',
             objective: baseResume.objective || '',
             relevantCourses: courses,
             jobs,
@@ -93,26 +130,40 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
 
     const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
-    const handleUseBaseObjective = () => {
-        setResumeData((prev) => {
-            const newData = { ...prev, objective: normalizedBaseResume.objective };
-            onResumeChange(newData);
-            return newData;
-        });
-    };
-
     const handleAddCourseFromBase = (course) => {
         if (!course) return;
         setRelevantCourses((prev) => {
             if (prev.map((c) => c.toLowerCase()).includes(course.toLowerCase())) return prev;
             const updated = [...prev, course];
             setResumeData((prevData) => {
-                const newData = { ...prevData, relevantCourses: updated.join(', ') };
+                const newData = { ...prevData, relevantCourses: updated };
                 onResumeChange(newData);
                 return newData;
             });
             return updated;
         });
+    };
+
+    const isJobImported = (job) => {
+        return (resumeData.jobs || []).some((existing) =>
+            (existing.jobTitle || '').toLowerCase() === (job.jobTitle || '').toLowerCase() &&
+            (existing.jobEmployer || '').toLowerCase() === (job.jobEmployer || '').toLowerCase() &&
+            (existing.jobStartDate || '') === (job.jobStartDate || '') &&
+            (existing.jobEndDate || '') === (job.jobEndDate || '')
+        );
+    };
+
+    const isProjectImported = (proj) => {
+        return (resumeData.projects || []).some((existing) =>
+            (existing.projectTitle || '').toLowerCase() === (proj.projectTitle || '').toLowerCase() &&
+            (existing.projectDate || '') === (proj.projectDate || '')
+        );
+    };
+
+    const isSkillCategoryImported = (cat) => {
+        return (resumeData.skillCategories || []).some((existing) =>
+            (existing.catTitle || '').toLowerCase() === (cat.catTitle || '').toLowerCase()
+        );
     };
 
     const handleAddJobFromBase = (job) => {
@@ -203,7 +254,7 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
         setRelevantCourses((prev) => {
             const updated = [...prev, trimmed];
             setResumeData((prevData) => {
-                const newData = { ...prevData, relevantCourses: updated.join(', ') };
+                const newData = { ...prevData, relevantCourses: updated };
                 onResumeChange(newData);
                 return newData;
             });
@@ -216,7 +267,7 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
         setRelevantCourses((prev) => {
             const updated = prev.filter((_, i) => i !== index);
             setResumeData((prevData) => {
-                const newData = { ...prevData, relevantCourses: updated.join(', ') };
+                const newData = { ...prevData, relevantCourses: updated };
                 onResumeChange(newData);
                 return newData;
             });
@@ -330,79 +381,30 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
             <ObjectiveSection
                 objective={resumeData.objective}
                 onUpdateObjective={handleUpdateObjective}
+                baseObjective={normalizedBaseResume.objective}
             />
-            <div style={{ marginBottom: '16px', padding: '12px', border: '1px solid #ddd', borderRadius: '10px', background: '#f9fbff' }}>
-                <h3 style={{ marginTop: 0 }}>Import From Profile Resume</h3>
-                <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                        <strong>Objective</strong>
-                        <div style={{ color: '#555', fontSize: '0.95em' }}>{normalizedBaseResume.objective || 'No objective saved in profile.'}</div>
-                    </div>
-                    <button type="button" onClick={handleUseBaseObjective} disabled={!normalizedBaseResume.objective}>Use Objective</button>
-                </div>
-                <div style={{ marginBottom: '10px' }}>
-                    <strong>Relevant Courses</strong>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
-                        {normalizedBaseResume.relevantCourses.length === 0 && <span style={{ color: '#777' }}>No courses saved.</span>}
-                        {normalizedBaseResume.relevantCourses.map((course, idx) => (
-                            <span key={`base-course-${idx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '999px', background: '#eef3ff' }}>
-                                {course}
-                                <button type="button" onClick={() => handleAddCourseFromBase(course)} style={{ border: '1px solid #ccc', background: '#fff', borderRadius: '6px', padding: '2px 6px', cursor: 'pointer' }}>Add</button>
-                            </span>
-                        ))}
-                    </div>
-                </div>
-                <div style={{ marginBottom: '10px' }}>
-                    <strong>Work Experience</strong>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
-                        {normalizedBaseResume.jobs.length === 0 && <span style={{ color: '#777' }}>No jobs saved.</span>}
-                        {normalizedBaseResume.jobs.map((job) => (
-                            <div key={job.id} style={{ border: '1px solid #eee', borderRadius: '8px', padding: '8px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <div style={{ fontWeight: 600 }}>{job.jobTitle || 'Untitled Job'}</div>
-                                    <div style={{ color: '#555', fontSize: '0.9em' }}>{job.jobEmployer}</div>
-                                </div>
-                                <button type="button" onClick={() => handleAddJobFromBase(job)}>Add</button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div style={{ marginBottom: '10px' }}>
-                    <strong>Projects</strong>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
-                        {normalizedBaseResume.projects.length === 0 && <span style={{ color: '#777' }}>No projects saved.</span>}
-                        {normalizedBaseResume.projects.map((proj) => (
-                            <div key={proj.id} style={{ border: '1px solid #eee', borderRadius: '8px', padding: '8px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <div style={{ fontWeight: 600 }}>{proj.projectTitle || 'Untitled Project'}</div>
-                                    <div style={{ color: '#555', fontSize: '0.9em' }}>{proj.projectDate}</div>
-                                </div>
-                                <button type="button" onClick={() => handleAddProjectFromBase(proj)}>Add</button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div>
-                    <strong>Skill Categories</strong>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
-                        {normalizedBaseResume.skillCategories.length === 0 && <span style={{ color: '#777' }}>No skill categories saved.</span>}
-                        {normalizedBaseResume.skillCategories.map((cat) => (
-                            <div key={cat.id} style={{ border: '1px solid #eee', borderRadius: '8px', padding: '8px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <div style={{ fontWeight: 600 }}>{cat.catTitle || 'Untitled Category'}</div>
-                                    <div style={{ color: '#555', fontSize: '0.9em' }}>
-                                        {(Array.isArray(cat.catSkills) ? cat.catSkills : []).slice(0, 3).join(', ')}
-                                        {(Array.isArray(cat.catSkills) && cat.catSkills.length > 3) ? '…' : ''}
-                                    </div>
-                                </div>
-                                <button type="button" onClick={() => handleAddSkillCatFromBase(cat)}>Add</button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
             <div style={{ marginBottom: '16px' }}>
                 <h3>Relevant Courses</h3>
+                {normalizedBaseResume.relevantCourses.length > 0 && (
+                    <div style={{ marginBottom: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {normalizedBaseResume.relevantCourses.map((course, idx) => {
+                            const alreadyAdded = relevantCourses.map((c) => c.toLowerCase()).includes(course.toLowerCase());
+                            return (
+                                <span key={`base-course-${idx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '999px', background: '#eef3ff' }}>
+                                    {course}
+                                    <button
+                                        type="button"
+                                        onClick={() => handleAddCourseFromBase(course)}
+                                        style={{ border: '1px solid #ccc', background: '#fff', borderRadius: '6px', padding: '2px 6px', cursor: 'pointer' }}
+                                        disabled={alreadyAdded}
+                                    >
+                                        {alreadyAdded ? 'Added' : 'Add'}
+                                    </button>
+                                </span>
+                            );
+                        })}
+                    </div>
+                )}
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                     <input
                         type="text"
@@ -435,12 +437,18 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
                     onUpdateJob={handleUpdateJob}
                     onRemoveJob={handleRemoveJob}
                     onAddJob={handleAddJob}
+                    baseJobs={normalizedBaseResume.jobs}
+                    onImportJob={handleAddJobFromBase}
+                    isJobImported={isJobImported}
                 />
                 <ProjectsSection
                     projects={resumeData.projects}
                     onUpdateProject={handleUpdateProject}
                     onRemoveProject={handleRemoveProject}
                     onAddProject={handleAddProject}
+                    baseProjects={normalizedBaseResume.projects}
+                    onImportProject={handleAddProjectFromBase}
+                    isProjectImported={isProjectImported}
                 />
                 {/* Other resume sections will go here */}
             </DndContext>
@@ -449,6 +457,9 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
                 onUpdateSkillCategory={handleUpdateSkillCategory}
                 onRemoveSkillCategory={handleRemoveSkillCategory}
                 onAddSkillCategory={handleAddSkillCategory}
+                baseSkillCategories={normalizedBaseResume.skillCategories}
+                onImportSkillCategory={handleAddSkillCatFromBase}
+                isSkillCategoryImported={isSkillCategoryImported}
             />
         </div>
     );

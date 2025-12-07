@@ -11,4 +11,4 @@ This project is a web application for managing job applications and generating r
 
 ## Prerequisites
 
-- The backend requires `pdflatex` to be installed and available in your system's PATH to generate PDF resumes.
+- The backend requires `pdflatex` to be installed and available in your system's PATH to generate PDF resumes. On Arch/Manjaro install the `texlive-bin` package (it provides `pdflatex`).
