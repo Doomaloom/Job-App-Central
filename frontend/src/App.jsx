@@ -492,6 +492,8 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
   const [application, setApplication] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [optimizing, setOptimizing] = useState(false);
+  const [optError, setOptError] = useState(null);
 
   useEffect(() => {
     const fetchApplicationDetail = async () => {
@@ -595,6 +597,38 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
     setApplication(prevApp => ({...prevApp, resume: mergeProfileHeader(newResumeData, profileHeader)}))
   }
 
+  const handleOptimizeResume = async () => {
+    if (!application) return;
+    setOptError(null);
+    setOptimizing(true);
+    try {
+      const payload = {
+        jobTitle: application.jobTitle,
+        company: application.company,
+        jobDescription: application.jobDescription,
+        resume: mergeProfileHeader(profileResume, profileHeader),
+      };
+      const response = await fetch('/api/optimize-resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `HTTP ${response.status}`);
+      }
+      const optimizedResume = await response.json();
+      setApplication((prev) => ({ ...prev, resume: mergeProfileHeader(optimizedResume, profileHeader) }));
+      alert('Resume optimized with AI.');
+    } catch (e) {
+      console.error('Failed to optimize resume', e);
+      setOptError(e);
+      alert('Failed to optimize resume.');
+    } finally {
+      setOptimizing(false);
+    }
+  };
+
   if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading application details...</div>;
   if (error) return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Error loading application: {error.message}</div>;
   if (!application) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Application not found.</div>;
@@ -637,11 +671,24 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
       <div>
         {activeTab === 'details' && <JobDetailsTab application={application} onSave={handleSaveApplication} />}
         {activeTab === 'resume' && (
-          <ResumeEditor
-            application={application}
-            onResumeChange={handleResumeChange}
-            baseResume={profileResume}
-          />
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '10px' }}>
+              <button
+                type="button"
+                onClick={handleOptimizeResume}
+                disabled={optimizing}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', background: optimizing ? '#eee' : '#f5f5f5' }}
+              >
+                {optimizing ? 'Optimizing…' : 'Optimize with AI'}
+              </button>
+              {optError && <span style={{ color: 'red' }}>AI optimize failed</span>}
+            </div>
+            <ResumeEditor
+              application={application}
+              onResumeChange={handleResumeChange}
+              baseResume={profileResume}
+            />
+          </div>
         )}
         {activeTab === 'coverletter' && <CoverLetterTab application={application} />}
       </div>

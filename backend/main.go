@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,11 +12,46 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 const applicationsDir = "applications"
+
+// StringList supports either a JSON array of strings or a comma-separated string.
+type StringList []string
+
+func (s *StringList) UnmarshalJSON(b []byte) error {
+	// Try array first
+	var arr []string
+	if err := json.Unmarshal(b, &arr); err == nil {
+		*s = filterAndTrim(arr)
+		return nil
+	}
+	// Fallback to single string (comma-separated)
+	var str string
+	if err := json.Unmarshal(b, &str); err == nil {
+		if strings.TrimSpace(str) == "" {
+			*s = []string{}
+			return nil
+		}
+		parts := strings.Split(str, ",")
+		*s = filterAndTrim(parts)
+		return nil
+	}
+	return fmt.Errorf("expected array or string for string list")
+}
+
+func filterAndTrim(items []string) []string {
+	out := make([]string, 0, len(items))
+	for _, v := range items {
+		if t := strings.TrimSpace(v); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
 
 // ResumeData represents the overall structure of the resume data.
 type ResumeData struct {
@@ -25,7 +61,7 @@ type ResumeData struct {
 	LinkedIn        string          `json:"linkedin"`
 	Github          string          `json:"github"`
 	Objective       string          `json:"objective"`
-	RelevantCourses []string        `json:"relevantCourses"`
+	RelevantCourses StringList      `json:"relevantCourses"`
 	Jobs            []Job           `json:"jobs"`
 	Projects        []Project       `json:"projects"`
 	SkillCategories []SkillCategory `json:"skillCategories"`
@@ -38,7 +74,7 @@ type Job struct {
 	JobEndDate   string   `json:"jobEndDate"`
 	JobEmployer  string   `json:"jobEmployer"`
 	JobLocation  string   `json:"jobLocation"`
-	JobPoints    []string `json:"jobPoints"`
+	JobPoints    StringList `json:"jobPoints"`
 }
 
 // Project represents a single project entry in the resume.
@@ -46,13 +82,13 @@ type Project struct {
 	ProjectTitle  string   `json:"projectTitle"`
 	ProjectTech   string   `json:"projectTech"`
 	ProjectDate   string   `json:"projectDate"`
-	ProjectPoints []string `json:"projectPoints"`
+	ProjectPoints StringList `json:"projectPoints"`
 }
 
 // SkillCategory represents a category of skills.
 type SkillCategory struct {
 	CatTitle  string   `json:"catTitle"`
-	CatSkills []string `json:"catSkills"`
+	CatSkills StringList `json:"catSkills"`
 }
 
 // Application represents a full job application, including resume data.
@@ -73,6 +109,31 @@ type ApplicationSummary struct {
 	ApplicationStatus string `json:"applicationStatus"`
 }
 
+// optimizeRequest is the payload for resume optimization.
+type optimizeRequest struct {
+	JobTitle       string     `json:"jobTitle"`
+	Company        string     `json:"company"`
+	JobDescription string     `json:"jobDescription"`
+	Resume         ResumeData `json:"resume"`
+}
+
+var latexEscaper = strings.NewReplacer(
+	`\\`, `\textbackslash{}`,
+	"&", `\&`,
+	"%", `\%`,
+	"$", `\$`,
+	"#", `\#`,
+	"_", `\_`,
+	"{", `\{`,
+	"}", `\}`,
+	"~", `\textasciitilde{}`,
+	"^", `\textasciicircum{}`,
+)
+
+func esc(s string) string {
+	return latexEscaper.Replace(s)
+}
+
 func main() {
 	// Ensure the applications directory exists
 	if _, err := os.Stat(applicationsDir); os.IsNotExist(err) {
@@ -86,6 +147,7 @@ func main() {
 	http.HandleFunc("/api/generate-pdf", handleGeneratePDF)
 	http.HandleFunc("/api/applications", handleApplications)
 	http.HandleFunc("/api/applications/", handleApplicationByID) // For GET, PUT, DELETE by ID
+	http.HandleFunc("/api/optimize-resume", handleOptimizeResume)
 
 	fmt.Println("Server starting on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -175,6 +237,35 @@ func handleGeneratePDF(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/pdf")
 	w.Header().Set("Content-Disposition", "attachment; filename=\"resume.pdf\"")
 	w.Write(pdfContent)
+}
+
+// handleOptimizeResume calls OpenAI to optimize the resume based on job details.
+func handleOptimizeResume(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		http.Error(w, "OPENAI_API_KEY not set on server", http.StatusInternalServerError)
+		return
+	}
+
+	var req optimizeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	optimized, err := optimizeResumeWithAI(apiKey, req)
+	if err != nil {
+		http.Error(w, "Failed to optimize resume: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(optimized)
 }
 
 // handleApplications handles GET to list all applications and POST to create a new application.
@@ -368,7 +459,7 @@ func generateApplicantHeader(data ResumeData) (string, error) {
     \href{https:/%s}{\underline{%s}} $|$
     \href{https:/%s}{\underline{%s}}
 	\end{center}
-		`, data.Name, data.Phone, data.Email, data.Email, data.LinkedIn, data.LinkedIn, data.Github, data.Github)
+		`, esc(data.Name), esc(data.Phone), esc(data.Email), esc(data.Email), esc(data.LinkedIn), esc(data.LinkedIn), esc(data.Github), esc(data.Github))
 
 	return applicantHeader, nil
 
@@ -381,7 +472,7 @@ func generateObjective(data ResumeData) (string, error) {
 		return "", err
 	}
 
-	objective := objectiveTemplate + data.Objective + "\n} \\end{itemize}\n"
+	objective := objectiveTemplate + esc(data.Objective) + "\n} \\end{itemize}\n"
 
 	return objective, nil
 }
@@ -395,7 +486,7 @@ func generateEducation(data ResumeData) (string, error) {
 
 	var courses bytes.Buffer
 	for _, course := range data.RelevantCourses {
-		courses.WriteString(course + ", ")
+		courses.WriteString(esc(course) + ", ")
 	}
 	courses.UnreadByte()
 	courses.UnreadByte()
@@ -424,17 +515,17 @@ func generateProjects(data ResumeData) (string, error) {
 		date := project.ProjectDate
 		points := project.ProjectPoints
 
-		currentProject.WriteString(title)
+		currentProject.WriteString(esc(title))
 		currentProject.WriteString("} $|$ \\emph{ \n")
-		currentProject.WriteString(tech)
+		currentProject.WriteString(esc(tech))
 		currentProject.WriteString("}}{ \n")
-		currentProject.WriteString(date)
+		currentProject.WriteString(esc(date))
 		currentProject.WriteString("} \n")
 
 		currentProject.WriteString("\\resumeItemListStart")
 		for _, point := range points {
 			currentProject.WriteString("\\resumeItem{")
-			currentProject.WriteString(point)
+			currentProject.WriteString(esc(point))
 			currentProject.WriteString("}\n")
 		}
 		currentProject.WriteString("\\resumeItemListEnd \n")
@@ -461,19 +552,19 @@ func generateWork(data ResumeData) (string, error) {
 		var currentJob bytes.Buffer
 
 		currentJob.WriteString("\\resumeSubheading \n {")
-		currentJob.WriteString(job.JobTitle)
+		currentJob.WriteString(esc(job.JobTitle))
 		currentJob.WriteString("}{")
-		currentJob.WriteString(job.JobStartDate + " -- " + job.JobEndDate)
+		currentJob.WriteString(esc(job.JobStartDate + " -- " + job.JobEndDate))
 		currentJob.WriteString("}{")
-		currentJob.WriteString(job.JobEmployer)
+		currentJob.WriteString(esc(job.JobEmployer))
 		currentJob.WriteString("}{")
-		currentJob.WriteString(job.JobLocation)
+		currentJob.WriteString(esc(job.JobLocation))
 		currentJob.WriteString("} \n \\resumeItemListStart")
 
 		points := job.JobPoints
 		for _, point := range points {
 			currentJob.WriteString("\\resumeItem{")
-			currentJob.WriteString(point)
+			currentJob.WriteString(esc(point))
 			currentJob.WriteString("}\n")
 		}
 		currentJob.WriteString("\\resumeItemListEnd \n")
@@ -499,10 +590,10 @@ func generateSkills(data ResumeData) (string, error) {
 		var currentSkillCat bytes.Buffer
 
 		currentSkillCat.WriteString("\\textbf{ ")
-		currentSkillCat.WriteString(skillCat.CatTitle)
+		currentSkillCat.WriteString(esc(skillCat.CatTitle))
 		currentSkillCat.WriteString(" }{: ")
 		for _, skill := range skillCat.CatSkills {
-			currentSkillCat.WriteString(skill + ", ")
+			currentSkillCat.WriteString(esc(skill) + ", ")
 		}
 		currentSkillCat.UnreadByte()
 		currentSkillCat.UnreadByte()
@@ -551,4 +642,134 @@ func generateLatexContent(data ResumeData) (string, error) {
 	fmt.Println(finalLatex)
 
 	return finalLatex, nil
+}
+
+func normalizeOptimizedResume(res ResumeData, fallback ResumeData) ResumeData {
+	if res.RelevantCourses == nil {
+		res.RelevantCourses = []string{}
+	}
+	if res.Jobs == nil {
+		res.Jobs = []Job{}
+	}
+	if res.Projects == nil {
+		res.Projects = []Project{}
+	}
+	if res.SkillCategories == nil {
+		res.SkillCategories = []SkillCategory{}
+	}
+	// Header defaults
+	if res.Name == "" {
+		res.Name = fallback.Name
+	}
+	if res.Phone == "" {
+		res.Phone = fallback.Phone
+	}
+	if res.Email == "" {
+		res.Email = fallback.Email
+	}
+	if res.LinkedIn == "" {
+		res.LinkedIn = fallback.LinkedIn
+	}
+	if res.Github == "" {
+		res.Github = fallback.Github
+	}
+	for i := range res.Jobs {
+		if res.Jobs[i].JobPoints == nil {
+			res.Jobs[i].JobPoints = []string{}
+		}
+	}
+	for i := range res.Projects {
+		if res.Projects[i].ProjectPoints == nil {
+			res.Projects[i].ProjectPoints = []string{}
+		}
+	}
+	for i := range res.SkillCategories {
+		if res.SkillCategories[i].CatSkills == nil {
+			res.SkillCategories[i].CatSkills = []string{}
+		}
+	}
+	return res
+}
+
+// optimizeResumeWithAI calls OpenAI Chat Completions to improve the resume content.
+func optimizeResumeWithAI(apiKey string, req optimizeRequest) (ResumeData, error) {
+	type message struct {
+		Role    string `json:"role"`
+		Content string `json:"content"`
+	}
+	type payload struct {
+		Model       string    `json:"model"`
+		Messages    []message `json:"messages"`
+		Temperature float32   `json:"temperature"`
+	}
+
+	userResume, _ := json.Marshal(req.Resume)
+	model := os.Getenv("OPENAI_MODEL")
+	if model == "" {
+		model = "gpt-5-mini"
+	}
+	systemPrompt := `You are an expert resume writer. Improve the provided resume for the given job title, company, and description.
+Rules:
+- Do not fabricate experience, companies, or technologies not present in the provided resume.
+-, only rephrase and reorganize to align with the job.
+- Keep all JSON fields present, using the same schema as the provided "resume" field.
+- Respond with ONLY JSON (no markdown) that matches ResumeData: {"name": string,"number": string,"email": string,"linkedin": string,"github": string,"objective": string,"relevantCourses": [string],"jobs":[{"jobTitle": string,"jobStartDate": string,"jobEndDate": string,"jobEmployer": string,"jobLocation": string,"jobPoints": [string]}],"projects":[{"projectTitle": string,"projectTech": string,"projectDate": string,"projectPoints": [string]}],"skillCategories":[{"catTitle": string,"catSkills": [string]}]}.
+- Preserve truthful chronology; do not add dates if missing; do not claim achievements not implied by the text.`
+
+	userPrompt := fmt.Sprintf("Job Title: %s\nCompany: %s\nJob Description:\n%s\n\nCurrent Resume JSON:\n%s",
+		req.JobTitle, req.Company, req.JobDescription, string(userResume))
+
+	reqBody := payload{
+		Model: model,
+		Messages: []message{
+			{Role: "system", Content: systemPrompt},
+			{Role: "user", Content: userPrompt},
+		},
+		Temperature: 0.3,
+	}
+
+	bodyBytes, _ := json.Marshal(reqBody)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(bodyBytes))
+	if err != nil {
+		return ResumeData{}, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+apiKey)
+
+	client := &http.Client{Timeout: 35 * time.Second}
+	resp, err := client.Do(request)
+	if err != nil {
+		return ResumeData{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		content, _ := ioutil.ReadAll(resp.Body)
+		return ResumeData{}, fmt.Errorf("openai error: %s", string(content))
+	}
+
+	var apiResp struct {
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return ResumeData{}, fmt.Errorf("failed to decode openai response: %w", err)
+	}
+	if len(apiResp.Choices) == 0 {
+		return ResumeData{}, fmt.Errorf("no choices returned from openai")
+	}
+
+	content := strings.TrimSpace(apiResp.Choices[0].Message.Content)
+	var optimized ResumeData
+	if err := json.Unmarshal([]byte(content), &optimized); err != nil {
+		return ResumeData{}, fmt.Errorf("failed to parse optimized resume json: %w", err)
+	}
+	normalized := normalizeOptimizedResume(optimized, req.Resume)
+	return normalized, nil
 }
