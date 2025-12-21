@@ -11,4 +11,7 @@ This project is a web application for managing job applications and generating r
 
 ## Prerequisites
 
-- The backend requires `pdflatex` to be installed and available in your system's PATH to generate PDF resumes. On Arch/Manjaro install the `texlive-bin` package (it provides `pdflatex`).
+- The backend requires `pdflatex` (and the LaTeX base files) to be installed and available in your system's PATH to generate PDF resumes.
+  - Arch/Manjaro: install `texlive-bin` plus a LaTeX package set like `texlive-basic`/`texlive-latex` (package names vary by distro).
+  - Debian/Ubuntu: `sudo apt install texlive-latex-base` (or `texlive-full`).
+  - If you see `I can't find the format file 'pdflatex.fmt'`, generate formats with `fmtutil-user --byfmt pdflatex` (per-user) or `sudo fmtutil-sys --byfmt pdflatex` (system-wide).

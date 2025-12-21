@@ -1,0 +1,19 @@
+{
+  "id": "35382a96-2a82-4c97-8bdc-3772ac383bbe",
+  "jobTitle": "New Job Application",
+  "company": "New Company",
+  "applicationStatus": "applied",
+  "jobDescription": "",
+  "resume": {
+    "name": "Frank Kocun",
+    "number": "(437)240-6814",
+    "email": "frankkocun@gmail.com",
+    "linkedin": "linkedin.com/in/frank-kocun",
+    "github": "github.com/Doomaloom",
+    "objective": "",
+    "relevantCourses": [],
+    "jobs": [],
+    "projects": [],
+    "skillCategories": []
+  }
+}

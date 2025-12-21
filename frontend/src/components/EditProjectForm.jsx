@@ -189,7 +189,7 @@ function EditProjectForm({ project, onSave, onCancel }) {
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                         <input
                             type="text"
-                            placeholder="Add a project point"
+                            placeholder="Add a project impact point"
                             value={newPoint}
                             onChange={(e) => setNewPoint(e.target.value)}
                             onKeyDown={(e) => {
@@ -223,8 +223,8 @@ function EditProjectForm({ project, onSave, onCancel }) {
                 </div>
             </div>
             <div style={{ marginTop: '10px' }}>
-                <button onClick={handleSave}>Save</button>
-                <button onClick={onCancel} style={{ marginLeft: '10px' }}>Cancel</button>
+                <button type="button" onClick={handleSave}>Save</button>
+                <button type="button" onClick={onCancel} style={{ marginLeft: '10px' }}>Cancel</button>
             </div>
         </div>
     );

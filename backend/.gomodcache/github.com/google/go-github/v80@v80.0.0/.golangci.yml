@@ -1,0 +1,466 @@
+version: "2"
+run:
+  build-tags:
+    - integration
+linters:
+  enable:
+    - canonicalheader
+    - copyloopvar
+    - dogsled
+    - dupl
+    - errorlint
+    - fmtpercentv
+    - forbidigo
+    - gocritic
+    - godot
+    - goheader
+    - gosec
+    - intrange
+    - misspell
+    - modernize
+    - musttag
+    - nakedret
+    - nolintlint
+    - paralleltest
+    - perfsprint
+    - revive
+    - sliceofpointers
+    - staticcheck
+    - structfield
+    - tparallel
+    - unconvert
+    - unparam
+    - usetesting
+    - whitespace
+  settings:
+    errorlint:
+      errorf: false
+      asserts: true
+      comparison: true
+    forbidigo:
+      forbid:
+        - pattern: ^reflect\.DeepEqual$
+          msg: "Use cmp.Equal instead of reflect.DeepEqual"
+        - pattern: "^http\\.Method[A-Z][a-z]*$"
+          msg: "Use string literals instead of http.Method constants (https://pkg.go.dev/net/http#pkg-constants)"
+    gocritic:
+      disable-all: true
+      enabled-checks:
+        - commentedOutCode
+        - commentFormatting
+        - deprecatedComment
+        - paramTypeCombine
+    goheader:
+      values:
+        regexp:
+          CopyrightDate: 'Copyright \d{4} '
+      template: |-
+        {{CopyrightDate}}The go-github AUTHORS. All rights reserved.
+
+        Use of this source code is governed by a BSD-style
+        license that can be found in the LICENSE file.
+    gosec:
+      excludes:
+        # duplicates errcheck
+        - G104
+        # int(os.Stdin.Fd())
+        - G115
+    misspell:
+      locale: US
+      # extra words from https://go.dev//wiki/Spelling
+      extra-words:
+        - typo: marshall
+          correction: marshal
+        - typo: marshalled
+          correction: marshaled
+        - typo: marshalling
+          correction: marshaling
+        - typo: unmarshall
+          correction: unmarshal
+        - typo: unmarshalling
+          correction: unmarshaling
+        - typo: unmarshalled
+          correction: unmarshaled
+        - typo: unmarshalling
+          correction: unmarshaling
+      ignore-rules:
+        - analyses # returned by the GitHub API
+        - cancelled # returned by the GitHub API
+    modernize:
+      disable:
+        - omitzero # TODO: fix
+    nolintlint:
+      allow-unused: true
+      require-specific: true
+    perfsprint:
+      errorf: true
+      strconcat: false
+    revive:
+      # Set below 0.8 to enable error-strings rule.
+      confidence: 0.6
+      rules:
+        - name: blank-imports
+        - name: bool-literal-in-expr
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: early-return
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+          arguments:
+            - disableChecksOnConstants
+            - disableChecksOnVariables
+            - disableStutteringCheck
+        - name: filename-format
+          arguments:
+            - ^[_a-z][_a-z0-9]*.go$
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-equal
+        - name: time-naming
+        - name: unexported-naming
+        - name: unexported-return
+        - name: unnecessary-format
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: use-any
+        - name: var-declaration
+        - name: var-naming
+    staticcheck:
+      checks:
+        - "all"
+        - "-QF1008" # allow embedded field in selector
+    usetesting:
+      context-background: true
+      context-todo: true
+      os-chdir: true
+      os-mkdir-temp: true
+      os-setenv: true
+      os-create-temp: true
+      os-temp-dir: true
+    custom:
+      fmtpercentv:
+        type: module
+        description: Reports usage of %d or %s in format strings.
+        original-url: github.com/google/go-github/v80/tools/fmtpercentv
+      sliceofpointers:
+        type: module
+        description: Reports usage of []*string and slices of structs without pointers.
+        original-url: github.com/google/go-github/v80/tools/sliceofpointers
+      structfield:
+        type: module
+        description: Reports mismatches between Go field and JSON, URL tag names and types.
+        original-url: github.com/google/go-github/v80/tools/structfield
+        settings:
+          allowed-tag-names:
+            - ActionsCacheUsageList.RepoCacheUsage # TODO: RepoCacheUsages ?
+            - AuditEntry.ExternalIdentityNameID
+            - AuditEntry.Timestamp
+            - CheckSuite.AfterSHA
+            - CheckSuite.BeforeSHA
+            - CodeSearchResult.CodeResults
+            - CodeSearchResult.Total
+            - CommitAuthor.Login
+            - CommitsSearchResult.Commits
+            - CommitsSearchResult.Total
+            - CreateOrgInvitationOptions.TeamID # TODO: TeamIDs
+            - DependencyGraphSnapshot.Sha # TODO: SHA
+            - Discussion.DiscussionCategory # TODO: Category ?
+            - EditOwner.OwnerInfo
+            - EnterpriseLicensedUsers.GithubComSamlNameID # TODO: GithubComSAMLNameID
+            - Event.RawPayload
+            - HookRequest.RawPayload
+            - HookResponse.RawPayload
+            - Issue.PullRequestLinks # TODO: PullRequest
+            - IssueImportRequest.IssueImport # TODO: Issue
+            - IssuesSearchResult.Issues # TODO: Items
+            - IssuesSearchResult.Total
+            - LabelsSearchResult.Labels # TODO: Items
+            - LabelsSearchResult.Total
+            - ListCheckRunsResults.Total
+            - ListCheckSuiteResults.Total
+            - ListCustomDeploymentRuleIntegrationsResponse.AvailableIntegrations
+            - ListDeploymentProtectionRuleResponse.ProtectionRules
+            - ListIDPGroupsOptions.Query
+            - ListProjectsOptions.Query
+            - OrganizationCustomRepoRoles.CustomRepoRoles # TODO: CustomRoles
+            - OrganizationCustomRoles.CustomRepoRoles # TODO: Roles
+            - PreReceiveHook.ConfigURL
+            - ProjectV2ItemEvent.ProjectV2Item # TODO: ProjectsV2Item
+            - Protection.RequireLinearHistory # TODO: RequiredLinearHistory
+            - ProtectionRequest.RequireLinearHistory # TODO: RequiredLinearHistory
+            - PullRequestComment.InReplyTo # TODO: InReplyToID
+            - PullRequestReviewsEnforcementRequest.BypassPullRequestAllowancesRequest # TODO: BypassPullRequestAllowances
+            - PullRequestReviewsEnforcementRequest.DismissalRestrictionsRequest # TODO: DismissalRestrictions
+            - PullRequestReviewsEnforcementUpdate.BypassPullRequestAllowancesRequest # TODO: BypassPullRequestAllowances
+            - PullRequestReviewsEnforcementUpdate.DismissalRestrictionsRequest # TODO: DismissalRestrictions
+            - Reactions.MinusOne
+            - Reactions.PlusOne
+            - RepositoriesSearchResult.Repositories
+            - RepositoriesSearchResult.Total
+            - RepositoryVulnerabilityAlert.GitHubSecurityAdvisoryID
+            - SecretScanningAlertLocationDetails.Startline # TODO: StartLine
+            - SecretScanningPatternOverride.Bypassrate # TODO: BypassRate
+            - StarredRepository.Repository # TODO: Repo
+            - Timeline.Requester # TODO: ReviewRequester
+            - Timeline.Reviewer # TODO: RequestedReviewer
+            - TopicsSearchResult.Topics # TODO: Items
+            - TopicsSearchResult.Total
+            - TotalCacheUsage.TotalActiveCachesUsageSizeInBytes # TODO: TotalActiveCachesSizeInBytes
+            - TransferRequest.TeamID # TODO: TeamIDs
+            - Tree.Entries
+            - User.LdapDn # TODO: LDAPDN
+            - UsersSearchResult.Total
+            - UsersSearchResult.Users
+            - WeeklyStats.Additions
+            - WeeklyStats.Commits
+            - WeeklyStats.Deletions
+            - WeeklyStats.Week
+          allowed-tag-types:
+            - ActivityListStarredOptions.Direction # TODO: Activities
+            - ActivityListStarredOptions.Sort # TODO: Activities
+            - AddProjectItemOptions.ID # TODO: Projects
+            - AddProjectItemOptions.Type # TODO: Projects
+            - AlertInstancesListOptions.Ref # TODO: CodeScanning
+            - AlertListOptions.Direction # TODO: CodeScanning
+            - AlertListOptions.Ref # TODO: CodeScanning
+            - AlertListOptions.Severity # TODO: CodeScanning
+            - AlertListOptions.Sort # TODO: CodeScanning
+            - AlertListOptions.State # TODO: CodeScanning
+            - AlertListOptions.ToolGUID # TODO: CodeScanning
+            - AlertListOptions.ToolName # TODO: CodeScanning
+            - APIMetaArtifactAttestations.TrustDomain # TODO: Meta
+            - CommitsListOptions.Author # TODO: Repositories
+            - CommitsListOptions.Path # TODO: Repositories
+            - CommitsListOptions.SHA # TODO: Repositories
+            - CommitsListOptions.Since # TODO: Repositories
+            - CommitsListOptions.Until # TODO: Repositories
+            - CreateTag.Message # TODO: Git
+            - CreateTag.Object # TODO: Git
+            - CreateTag.Tag # TODO: Git
+            - CreateTag.Type # TODO: Git
+            - CredentialAuthorizationsListOptions.Login # TODO: Organizations
+            - DependabotEncryptedSecret.SelectedRepositoryIDs # TODO: Dependabot
+            - DependabotEncryptedSecret.Visibility # TODO: Dependabot
+            - DeploymentRequest.RequiredContexts # TODO: Deployments
+            - DeploymentsListOptions.Environment # TODO: Repositories
+            - DeploymentsListOptions.Ref # TODO: Repositories
+            - DeploymentsListOptions.SHA # TODO: Repositories
+            - DeploymentsListOptions.Task # TODO: Repositories
+            - DiscussionCommentListOptions.Direction # TODO: Teams
+            - DiscussionListOptions.Direction # TODO: Teams
+            - DismissalRestrictionsRequest.Apps # TODO: Repositories
+            - DismissalRestrictionsRequest.Teams # TODO: Repositories
+            - DismissalRestrictionsRequest.Users # TODO: Repositories
+            - EncryptedSecret.SelectedRepositoryIDs # TODO: Actions
+            - EncryptedSecret.Visibility # TODO: Actions
+            - ErrorBlock.Reason # TODO: Common
+            - ErrorResponse.DocumentationURL # TODO: Common
+            - GetCodeownersErrorsOptions.Ref # TODO: Repositories
+            - GistListOptions.Since # TODO: Gists
+            - HostedRunnerRequest.EnableStaticIP # TODO: Actions
+            - HostedRunnerRequest.Image # TODO: Actions
+            - HostedRunnerRequest.ImageVersion # TODO: Actions
+            - HostedRunnerRequest.MaximumRunners # TODO: Actions
+            - HostedRunnerRequest.Name # TODO: Actions
+            - HostedRunnerRequest.RunnerGroupID # TODO: Actions
+            - HostedRunnerRequest.Size # TODO: Actions
+            - IssueEvent.Action # TODO: Issues
+            - IssueListByRepoOptions.Assignee # TODO: Issues
+            - IssueListByRepoOptions.Assignee # TODO: Issues
+            - IssueListByRepoOptions.Creator # TODO: Issues
+            - IssueListByRepoOptions.Creator # TODO: Issues
+            - IssueListByRepoOptions.Direction # TODO: Issues
+            - IssueListByRepoOptions.Direction # TODO: Issues
+            - IssueListByRepoOptions.Mentioned # TODO: Issues
+            - IssueListByRepoOptions.Mentioned # TODO: Issues
+            - IssueListByRepoOptions.Milestone # TODO: Issues
+            - IssueListByRepoOptions.Since # TODO: Issues
+            - IssueListByRepoOptions.Since # TODO: Issues
+            - IssueListByRepoOptions.Sort # TODO: Issues
+            - IssueListByRepoOptions.Sort # TODO: Issues
+            - IssueListByRepoOptions.State # TODO: Issues
+            - IssueListOptions.Direction # TODO: Issues
+            - IssueListOptions.Filter # TODO: Issues
+            - IssueListOptions.Since # TODO: Issues
+            - IssueListOptions.Sort # TODO: Issues
+            - IssueListOptions.State # TODO: Issues
+            - IssueRequest.Assignees # TODO: Issues
+            - IssueRequest.Labels # TODO: Issues
+            - License.Conditions # TODO: Licenses
+            - License.Limitations # TODO: Licenses
+            - License.Permissions # TODO: Licenses
+            - ListCodespacesOptions.RepositoryID # TODO: Codespaces
+            - ListCollaboratorsOptions.Affiliation # TODO: Repositories
+            - ListCollaboratorsOptions.Permission # TODO: Repositories
+            - ListContributorsOptions.Anon # TODO: Repositories
+            - ListCursorOptions.After # TODO: Common
+            - ListCursorOptions.Before # TODO: Common
+            - ListCursorOptions.Cursor # TODO: Common
+            - ListCursorOptions.First # TODO: Common
+            - ListCursorOptions.Last # TODO: Common
+            - ListCursorOptions.Page # TODO: Common
+            - ListCursorOptions.PerPage # TODO: Common
+            - ListCustomPropertyValuesOptions.RepositoryQuery # TODO: Organizations
+            - ListEnterpriseRunnerGroupOptions.VisibleToOrganization # TODO: Enterprise
+            - ListFineGrainedPATOptions.Direction # TODO: Organizations
+            - ListFineGrainedPATOptions.LastUsedAfter # TODO: Organizations
+            - ListFineGrainedPATOptions.LastUsedBefore # TODO: Organizations
+            - ListFineGrainedPATOptions.Permission # TODO: Organizations
+            - ListFineGrainedPATOptions.Repository # TODO: Organizations
+            - ListFineGrainedPATOptions.Sort # TODO: Organizations
+            - ListIDPGroupsOptions.Query # TODO: Teams
+            - ListMembersOptions.Filter # TODO: Organizations
+            - ListMembersOptions.Role # TODO: Organizations
+            - ListOptions.Page # TODO: Common
+            - ListOptions.PerPage # TODO: Common
+            - ListOrgMembershipsOptions.State # TODO: Organizations
+            - ListOrgRunnerGroupOptions.VisibleToRepository # TODO: Actions
+            - ListOutsideCollaboratorsOptions.Filter # TODO: Organizations
+            - ListProvisionedSCIMGroupsEnterpriseOptions.Count # TODO: Enterprise
+            - ListProvisionedSCIMGroupsEnterpriseOptions.ExcludedAttributes # TODO: Enterprise
+            - ListProvisionedSCIMGroupsEnterpriseOptions.Filter # TODO: Enterprise
+            - ListProvisionedSCIMGroupsEnterpriseOptions.StartIndex # TODO: Enterprise
+            - ListReactionOptions.Content # TODO: Reactions
+            - ListRepositoryActivityOptions.ActivityType # TODO: Repositories
+            - ListRepositoryActivityOptions.Actor # TODO: Repositories
+            - ListRepositoryActivityOptions.After # TODO: Repositories
+            - ListRepositoryActivityOptions.Before # TODO: Repositories
+            - ListRepositoryActivityOptions.Direction # TODO: Repositories
+            - ListRepositoryActivityOptions.PerPage # TODO: Repositories
+            - ListRepositoryActivityOptions.Ref # TODO: Repositories
+            - ListRepositoryActivityOptions.TimePeriod # TODO: Repositories
+            - ListRepositorySecurityAdvisoriesOptions.Direction # TODO: SecurityAdvisories
+            - ListRepositorySecurityAdvisoriesOptions.Direction # TODO: SecurityAdvisories
+            - ListRepositorySecurityAdvisoriesOptions.Sort # TODO: SecurityAdvisories
+            - ListRepositorySecurityAdvisoriesOptions.Sort # TODO: SecurityAdvisories
+            - ListRepositorySecurityAdvisoriesOptions.State # TODO: SecurityAdvisories
+            - ListRepositorySecurityAdvisoriesOptions.State # TODO: SecurityAdvisories
+            - ListWorkflowJobsOptions.Filter # TODO: Actions
+            - ListWorkflowRunsOptions.Actor # TODO: Actions
+            - ListWorkflowRunsOptions.Branch # TODO: Actions
+            - ListWorkflowRunsOptions.CheckSuiteID # TODO: Actions
+            - ListWorkflowRunsOptions.Created # TODO: Actions
+            - ListWorkflowRunsOptions.Event # TODO: Actions
+            - ListWorkflowRunsOptions.ExcludePullRequests # TODO: Actions
+            - ListWorkflowRunsOptions.HeadSHA # TODO: Actions
+            - ListWorkflowRunsOptions.Status # TODO: Actions
+            - LockIssueOptions.LockReason # TODO: Issues
+            - MarketplacePlan.Bullets # TODO: Marketplaces
+            - MilestoneListOptions.Direction # TODO: Issues
+            - MilestoneListOptions.Sort # TODO: Issues
+            - MilestoneListOptions.State # TODO: Issues
+            - NotificationListOptions.All # TODO: Activities
+            - NotificationListOptions.Before # TODO: Activities
+            - NotificationListOptions.Participating # TODO: Activities
+            - NotificationListOptions.Since # TODO: Activities
+            - OrganizationsListOptions.Since # TODO: Organizations
+            - ProjectV2ItemFieldValue.DataType # TODO: Projects
+            - ProjectV2ItemFieldValue.Name # TODO: Projects
+            - PullRequestListCommentsOptions.Direction # TODO: PullRequests
+            - PullRequestListCommentsOptions.Since # TODO: PullRequests
+            - PullRequestListCommentsOptions.Sort # TODO: PullRequests
+            - PullRequestListOptions.Base # TODO: PullRequests
+            - PullRequestListOptions.Direction # TODO: PullRequests
+            - PullRequestListOptions.Head # TODO: PullRequests
+            - PullRequestListOptions.Sort # TODO: PullRequests
+            - PullRequestListOptions.State # TODO: PullRequests
+            - Rate.Resource # TODO: Common
+            - RepositoryAddCollaboratorOptions.Permission # TODO: Repositories
+            - RepositoryContentGetOptions.Ref # TODO: Repositories
+            - RepositoryCreateForkOptions.DefaultBranchOnly # TODO: Repositories
+            - RepositoryCreateForkOptions.Name # TODO: Repositories
+            - RepositoryCreateForkOptions.Organization # TODO: Repositories
+            - RepositoryListAllOptions.Since # TODO: Repositories
+            - RepositoryListByAuthenticatedUserOptions.Affiliation # TODO: Repositories
+            - RepositoryListByAuthenticatedUserOptions.Direction # TODO: Repositories
+            - RepositoryListByAuthenticatedUserOptions.Sort # TODO: Repositories
+            - RepositoryListByAuthenticatedUserOptions.Type # TODO: Repositories
+            - RepositoryListByAuthenticatedUserOptions.Visibility # TODO: Repositories
+            - RepositoryListByOrgOptions.Direction # TODO: Repositories
+            - RepositoryListByOrgOptions.Sort # TODO: Repositories
+            - RepositoryListByOrgOptions.Type # TODO: Repositories
+            - RepositoryListByUserOptions.Direction # TODO: Repositories
+            - RepositoryListByUserOptions.Sort # TODO: Repositories
+            - RepositoryListByUserOptions.Type # TODO: Repositories
+            - RepositoryListForksOptions.Sort # TODO: Repositories
+            - RepositoryListOptions.Affiliation # TODO: Repositories
+            - RepositoryListOptions.Direction # TODO: Repositories
+            - RepositoryListOptions.Sort # TODO: Repositories
+            - RepositoryListOptions.Type # TODO: Repositories
+            - RepositoryListOptions.Visibility # TODO: Repositories
+            - RequiredStatusChecks.Checks # TODO: Repositories
+            - RequiredStatusChecks.Contexts # TODO: Repositories
+            - SearchOptions.Order # TODO: Search
+            - SearchOptions.Sort # TODO: Search
+            - Secret.SelectedRepositoriesURL # TODO: Actions
+            - Secret.Visibility # TODO: Actions
+            - SecretScanningAlertListOptions.Direction # TODO: SecretScanning
+            - SecretScanningAlertListOptions.IsMultiRepo # TODO: SecretScanning
+            - SecretScanningAlertListOptions.IsPubliclyLeaked # TODO: SecretScanning
+            - SecretScanningAlertListOptions.Resolution # TODO: SecretScanning
+            - SecretScanningAlertListOptions.SecretType # TODO: SecretScanning
+            - SecretScanningAlertListOptions.Sort # TODO: SecretScanning
+            - SecretScanningAlertListOptions.State # TODO: SecretScanning
+            - SecretScanningAlertListOptions.Validity # TODO: SecretScanning
+            - TeamAddTeamMembershipOptions.Role # TODO: Teams
+            - TeamAddTeamRepoOptions.Permission # TODO: Teams
+            - TeamListTeamMembersOptions.Role # TODO: Teams
+            - TrafficBreakdownOptions.Per  # TODO: Repositories
+            - UpdateRuleParameters.UpdateAllowsFetchAndMerge # TODO: Rules
+            - UploadOptions.Label # TODO: Repositories
+            - UploadOptions.Name # TODO: Repositories
+            - UserListOptions.Since # TODO: Users
+  exclusions:
+    rules:
+      - linters:
+          - dogsled
+          - dupl
+          - gosec
+          - unparam
+        path: _test\.go
+
+      # We need to pass nil Context in order to test DoBare erroring on nil ctx.
+      - linters: [staticcheck]
+        path: _test\.go
+        text: 'SA1012: do not pass a nil Context'
+
+      # We need to use sha1 for validating signatures
+      - linters: [gosec]
+        text: 'G505: Blocklisted import crypto/sha1: weak cryptographic primitive'
+
+      # This is adapted from golangci-lint's default exclusions. It disables linting for error checks on
+      # os.RemoveAll, fmt.Fprint*, fmt.Scanf, and any function ending in "Close".
+      - linters: [errcheck]
+        text: Error return value of .(.*Close|fmt\.Fprint.*|fmt\.Scanf|os\.Remove(All)?). is not checked
+
+      # We don't care about file inclusion via variable in examples or internal tools.
+      - linters: [gosec]
+        path: ^(example|tools)\/
+        text: 'G304: Potential file inclusion via variable'
+
+      # We don't run parallel integration tests
+      - linters: [paralleltest, tparallel]
+        path: ^test/integration
+
+      # Because fmt.Sprint(reset.Unix())) is more readable than strconv.FormatInt(reset.Unix(), 10).
+      - linters: [perfsprint]
+        text: fmt.Sprint.* can be replaced with faster strconv.FormatInt
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports

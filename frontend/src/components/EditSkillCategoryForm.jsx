@@ -125,8 +125,8 @@ function EditSkillCategoryForm({ skillCategory, onSave, onCancel }) {
                 </div>
             </div>
             <div style={{ marginTop: '10px' }}>
-                <button onClick={handleSave}>Save</button>
-                <button onClick={onCancel} style={{ marginLeft: '10px' }}>Cancel</button>
+                <button type="button" onClick={handleSave}>Save</button>
+                <button type="button" onClick={onCancel} style={{ marginLeft: '10px' }}>Cancel</button>
             </div>
         </div>
     );

@@ -1,7 +1,19 @@
 import React, { useState } from 'react';
 import EditSkillCategoryForm from './EditSkillCategoryForm';
 
-function SkillsSection({ skillCategories, onUpdateSkillCategory, onRemoveSkillCategory, onAddSkillCategory, baseSkillCategories = [], onImportSkillCategory, isSkillCategoryImported }) {
+function SkillsSection({
+    skillCategories,
+    onUpdateSkillCategory,
+    onRemoveSkillCategory,
+    onAddSkillCategory,
+    baseSkillCategories = [],
+    onImportSkillCategory,
+    isSkillCategoryImported,
+    showTitle = true,
+    addButtonStyle,
+    buttonStyle,
+    dangerButtonStyle,
+}) {
     const [editingSkillCatId, setEditingSkillCatId] = useState(null);
 
     const handleSaveSkillCategory = (updatedSkillCat) => {
@@ -19,7 +31,7 @@ function SkillsSection({ skillCategories, onUpdateSkillCategory, onRemoveSkillCa
 
     return (
         <div>
-            <h3>Skills</h3>
+            {showTitle ? <h3>Skills</h3> : null}
             {baseSkillCategories.length > 0 && onImportSkillCategory && (
                 <div style={{ marginBottom: '10px', padding: '8px', border: '1px dashed #ccc', borderRadius: '8px', background: '#fafafa' }}>
                     <div style={{ fontWeight: 600, marginBottom: '6px' }}>Import from Profile</div>
@@ -35,7 +47,7 @@ function SkillsSection({ skillCategories, onUpdateSkillCategory, onRemoveSkillCa
                                             {(Array.isArray(cat.catSkills) && cat.catSkills.length > 3) ? '…' : ''}
                                         </div>
                                     </div>
-                                    <button type="button" onClick={() => onImportSkillCategory(cat)} disabled={alreadyAdded}>
+                                    <button type="button" onClick={() => onImportSkillCategory(cat)} disabled={alreadyAdded} style={buttonStyle}>
                                         {alreadyAdded ? 'Added' : 'Add'}
                                     </button>
                                 </div>
@@ -44,7 +56,7 @@ function SkillsSection({ skillCategories, onUpdateSkillCategory, onRemoveSkillCa
                     </div>
                 </div>
             )}
-            <button onClick={onAddSkillCategory} style={{ marginBottom: '10px' }}>Add New Skill Category</button>
+            <button type="button" onClick={onAddSkillCategory} style={{ ...(addButtonStyle || buttonStyle), marginBottom: '10px' }}>Add New Skill Category</button>
             <div>
                 {(skillCategories || []).map(skillCat => (
                     <div key={skillCat.id} style={{ padding: '10px', border: '1px solid #ccc', marginBottom: '10px', backgroundColor: 'white' }}>
@@ -72,8 +84,8 @@ function SkillsSection({ skillCategories, onUpdateSkillCategory, onRemoveSkillCa
                                     {!skillCat.catSkills && <span style={{ color: '#777' }}>No skills listed.</span>}
                                 </div>
                                 <div style={{ marginTop: '10px' }}>
-                                    <button onClick={() => setEditingSkillCatId(skillCat.id)}>Edit</button>
-                                    <button onClick={() => onRemoveSkillCategory(skillCat.id)} style={{ marginLeft: '10px' }}>Remove</button>
+                                    <button type="button" onClick={() => setEditingSkillCatId(skillCat.id)} style={buttonStyle}>Edit</button>
+                                    <button type="button" onClick={() => onRemoveSkillCategory(skillCat.id)} style={{ ...(dangerButtonStyle || buttonStyle), marginLeft: '10px' }}>Remove</button>
                                 </div>
                             </div>
                         )}

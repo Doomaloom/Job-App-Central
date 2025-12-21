@@ -3,7 +3,20 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import SortableItem from './SortableItem';
 import EditProjectForm from './EditProjectForm';
 
-function ProjectsSection({ projects, onUpdateProject, onRemoveProject, onAddProject, baseProjects = [], onImportProject, isProjectImported }) {
+function ProjectsSection({
+    projects,
+    onUpdateProject,
+    onRemoveProject,
+    onAddProject,
+    onGetProjects,
+    baseProjects = [],
+    onImportProject,
+    isProjectImported,
+    showTitle = true,
+    addButtonStyle,
+    buttonStyle,
+    dangerButtonStyle,
+}) {
     const [editingProjectId, setEditingProjectId] = useState(null);
 
     const handleSaveProject = (updatedProject) => {
@@ -14,14 +27,14 @@ function ProjectsSection({ projects, onUpdateProject, onRemoveProject, onAddProj
     const handleCancelEdit = () => {
         setEditingProjectId(null);
     };
-    
+
     if (!projects) {
         return <div>Loading projects...</div>;
     }
 
     return (
         <div>
-            <h3>Projects</h3>
+            {showTitle ? <h3>Projects</h3> : null}
             {baseProjects.length > 0 && onImportProject && (
                 <div style={{ marginBottom: '10px', padding: '8px', border: '1px dashed #ccc', borderRadius: '8px', background: '#fafafa' }}>
                     <div style={{ fontWeight: 600, marginBottom: '6px' }}>Import from Profile</div>
@@ -34,7 +47,7 @@ function ProjectsSection({ projects, onUpdateProject, onRemoveProject, onAddProj
                                         <div style={{ fontWeight: 600 }}>{proj.projectTitle || 'Untitled Project'}</div>
                                         <div style={{ color: '#555', fontSize: '0.9em' }}>{proj.projectDate}</div>
                                     </div>
-                                    <button type="button" onClick={() => onImportProject(proj)} disabled={alreadyAdded}>
+                                    <button type="button" onClick={() => onImportProject(proj)} disabled={alreadyAdded} style={buttonStyle}>
                                         {alreadyAdded ? 'Added' : 'Add'}
                                     </button>
                                 </div>
@@ -43,7 +56,8 @@ function ProjectsSection({ projects, onUpdateProject, onRemoveProject, onAddProj
                     </div>
                 </div>
             )}
-            <button onClick={onAddProject} style={{ marginBottom: '10px' }}>Add New Project</button>
+            <button type="button" onClick={onGetProjects} style={{ ...(addButtonStyle || buttonStyle), marginBottom: '10px', marginRight: '10px' }}>Get Github Projects</button>
+            <button type="button" onClick={onAddProject} style={{ ...(addButtonStyle || buttonStyle), marginBottom: '10px' }}>Add New Project</button>
             <SortableContext
                 items={projects.map(p => p.id)}
                 strategy={verticalListSortingStrategy}
@@ -60,8 +74,8 @@ function ProjectsSection({ projects, onUpdateProject, onRemoveProject, onAddProj
                             <div>
                                 <h4>{project.projectTitle}</h4>
                                 <div style={{ marginTop: '10px' }}>
-                                    <button onClick={() => setEditingProjectId(project.id)}>Edit</button>
-                                    <button onClick={() => onRemoveProject(project.id)} style={{ marginLeft: '10px' }}>Remove</button>
+                                    <button type="button" onClick={() => setEditingProjectId(project.id)} style={buttonStyle}>Edit</button>
+                                    <button type="button" onClick={() => onRemoveProject(project.id)} style={{ ...(dangerButtonStyle || buttonStyle), marginLeft: '10px' }}>Remove</button>
                                 </div>
                             </div>
                         )}
