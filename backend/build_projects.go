@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,6 +27,7 @@ type ProjectCard struct {
 	Readme    string         `json:"readme,omitempty"`
 	Date      string         `json:"date,omitempty"`
 	Points    []string       `json:"points,omitempty"`
+	AIError   string         `json:"aiError,omitempty"`
 }
 
 func newGitHubClient() *github.Client {
@@ -33,13 +35,13 @@ func newGitHubClient() *github.Client {
 	return github.NewClient(nil)
 }
 
-func getReposJson(username string) []ProjectCard {
+func getReposJson(ctx context.Context, username string, includeAIErrors bool) []ProjectCard {
 	username = strings.TrimSpace(username)
 	if username == "" {
 		return []ProjectCard{}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 
 	client := newGitHubClient()
@@ -48,38 +50,42 @@ func getReposJson(username string) []ProjectCard {
 		return []ProjectCard{}
 	}
 
-	// Enrich each card; on any error, remove the card from the list.
-	filtered := cards[:0]
+	// Best-effort enrichment: keep the repo even if README/languages/AI fail.
 	for i := range cards {
+		fmt.Println(cards[i].Repo)
 		if cards[i].Owner == "" || cards[i].Repo == "" {
+			// Keep the card but skip lookups we can't perform.
 			continue
 		}
 
 		readme, err := getReadme(ctx, client, cards[i].Owner, cards[i].Repo)
-		if err != nil || readme == "" {
-			continue
+		if err == nil && readme != "" {
+			cards[i].Readme = readme
 		}
 
 		languages, err := getLanguages(ctx, client, cards[i].Owner, cards[i].Repo)
-		if err != nil || languages == nil {
-			continue
+		if err == nil && languages != nil {
+			cards[i].Languages = languages
 		}
-
-		cards[i].Readme = readme
-		cards[i].Languages = languages
 
 		// make project points with ai
-		if points, err := consultAI(ctx, cards[i]); err == nil && len(points) > 0 {
-			cards[i].Points = points
+		if points, err := consultAI(ctx, cards[i]); err == nil {
+			if len(points) > 0 {
+				cards[i].Points = points
+			}
+		} else {
+			log.Printf("consultAI failed for %s/%s: %v", cards[i].Owner, cards[i].Repo, err)
+			if includeAIErrors {
+				cards[i].AIError = err.Error()
+			}
 		}
-
-		filtered = append(filtered, cards[i])
 	}
 
-	return filtered
+	return cards
 }
 
 func getPublicRepos(ctx context.Context, client *github.Client, username string) ([]ProjectCard, error) {
+	fmt.Println("getting repos")
 	if username == "" {
 		return nil, fmt.Errorf("username is required")
 	}
@@ -224,8 +230,9 @@ type geminiPart struct {
 }
 
 type geminiGenerationConfig struct {
-	Temperature     float64 `json:"temperature,omitempty"`
-	MaxOutputTokens int     `json:"maxOutputTokens,omitempty"`
+	Temperature      float64 `json:"temperature,omitempty"`
+	MaxOutputTokens  int     `json:"maxOutputTokens,omitempty"`
+	ResponseMimeType string  `json:"responseMimeType,omitempty"`
 }
 
 type geminiSafetySetting struct {
@@ -234,8 +241,12 @@ type geminiSafetySetting struct {
 }
 
 type geminiGenerateContentResponse struct {
+	PromptFeedback *struct {
+		BlockReason string `json:"blockReason"`
+	} `json:"promptFeedback,omitempty"`
 	Candidates []struct {
-		Content struct {
+		FinishReason string `json:"finishReason"`
+		Content      struct {
 			Parts []struct {
 				Text string `json:"text"`
 			} `json:"parts"`
@@ -250,7 +261,7 @@ func consultAI(ctx context.Context, project ProjectCard) ([]string, error) {
 	}
 	model := strings.TrimSpace(os.Getenv("GEMINI_MODEL"))
 	if model == "" {
-		model = "gemini-3-flash"
+		model = "gemini-2.5-flash"
 	}
 
 	prompt := buildProjectPointsPrompt(project)
@@ -265,8 +276,9 @@ func consultAI(ctx context.Context, project ProjectCard) ([]string, error) {
 			},
 		},
 		GenerationConfig: geminiGenerationConfig{
-			Temperature:     0.4,
-			MaxOutputTokens: 256,
+			Temperature:      0.2,
+			MaxOutputTokens:  2000,
+			ResponseMimeType: "text/plain",
 		},
 		// Keep this permissive for dev; we already constrain output format in the prompt.
 		SafetySettings: []geminiSafetySetting{
@@ -312,25 +324,50 @@ func consultAI(ctx context.Context, project ProjectCard) ([]string, error) {
 		return nil, fmt.Errorf("failed to decode gemini response: %w", err)
 	}
 
-	text := ""
-	if len(parsed.Candidates) > 0 && len(parsed.Candidates[0].Content.Parts) > 0 {
-		text = parsed.Candidates[0].Content.Parts[0].Text
+	if len(parsed.Candidates) == 0 {
+		block := ""
+		if parsed.PromptFeedback != nil {
+			block = parsed.PromptFeedback.BlockReason
+		}
+		if block != "" {
+			return nil, fmt.Errorf("gemini returned no candidates (blockReason=%s)", block)
+		}
+		return nil, fmt.Errorf("gemini returned no candidates")
 	}
-	text = strings.TrimSpace(text)
+
+	var parts []string
+	for _, part := range parsed.Candidates[0].Content.Parts {
+		if t := strings.TrimSpace(part.Text); t != "" {
+			parts = append(parts, t)
+		}
+	}
+	text := strings.TrimSpace(strings.Join(parts, "\n"))
 	if text == "" {
+		if parsed.Candidates[0].FinishReason != "" {
+			return nil, fmt.Errorf("empty gemini response (finishReason=%s)", parsed.Candidates[0].FinishReason)
+		}
 		return nil, fmt.Errorf("empty gemini response")
 	}
 
-	points, err := parseJSONStringArray(text)
+	points, err := parsePipeSeparatedPoints(text)
 	if err != nil {
-		return nil, err
+		// Backwards-compatible fallback (in case the model returns JSON anyway).
+		if jsonPoints, jsonErr := parseJSONStringArray(text); jsonErr == nil && len(jsonPoints) > 0 {
+			return jsonPoints, nil
+		}
+
+		finish := parsed.Candidates[0].FinishReason
+		if finish != "" {
+			return nil, fmt.Errorf("%w (finishReason=%s); raw=%q", err, finish, truncateString(text, 300))
+		}
+		return nil, fmt.Errorf("%w; raw=%q", err, truncateString(text, 300))
 	}
 	return points, nil
 }
 
 func buildProjectPointsPrompt(project ProjectCard) string {
 	readme := strings.TrimSpace(project.Readme)
-	readme = truncateString(readme, 5000)
+	readme = truncateString(readme, 2000)
 
 	langs := make([]string, 0, len(project.Languages))
 	for k := range project.Languages {
@@ -341,21 +378,19 @@ func buildProjectPointsPrompt(project ProjectCard) string {
 	return fmt.Sprintf(
 		`You are helping generate neutral, general project description points for a resume.
 
-Given this GitHub repository info, output ONLY a JSON array of 3 to 5 short strings.
-Each string should be a general, descriptive point about what the project does and what skills it demonstrates.
+Return 1-5 detailed points separated by a single " | " character (one line, no bullets).
+Example: "Built X ... | Implemented Y ... | Designed Z ... | Deployed ..."
+Each point should be general and descriptive about what the project does and skills it demonstrates.
 Do NOT include metrics, numbers, or claims you cannot infer. Do NOT mention "README" or "GitHub".
-Keep each point under 18 words. Use plain language.
 
 Repo title: %q
 Full name: %q
-URL: %q
 Languages: %s
 
 README (truncated):
 %s`,
 		project.Title,
 		project.FullName,
-		project.HTMLURL,
 		strings.Join(langs, ", "),
 		readme,
 	)
@@ -368,13 +403,46 @@ func truncateString(s string, max int) string {
 	return s[:max]
 }
 
+func parsePipeSeparatedPoints(text string) ([]string, error) {
+	trimmed := strings.TrimSpace(text)
+	if trimmed == "" {
+		return nil, fmt.Errorf("empty response")
+	}
+	// Drop markdown code fences if present.
+	trimmed = strings.TrimPrefix(trimmed, "```")
+	trimmed = strings.TrimSuffix(trimmed, "```")
+	trimmed = strings.TrimSpace(trimmed)
+
+	parts := strings.Split(trimmed, "|")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		p := strings.TrimSpace(part)
+		p = strings.Trim(p, `"'`)
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		out = append(out, p)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("no points parsed")
+	}
+	return out, nil
+}
+
 func parseJSONStringArray(text string) ([]string, error) {
 	trimmed := strings.TrimSpace(text)
 
 	// Gemini sometimes wraps JSON in markdown fences; try to extract the first [...] block.
 	start := strings.Index(trimmed, "[")
 	end := strings.LastIndex(trimmed, "]")
-	if start == -1 || end == -1 || end <= start {
+	if start == -1 {
+		return nil, fmt.Errorf("expected JSON array, got: %q", truncateString(trimmed, 200))
+	}
+	if end == -1 || end <= start {
+		return nil, fmt.Errorf("incomplete JSON array, got: %q", truncateString(trimmed, 200))
+	}
+	if end <= start {
 		return nil, fmt.Errorf("expected JSON array, got: %q", truncateString(trimmed, 200))
 	}
 

@@ -68,25 +68,25 @@ type ResumeData struct {
 
 // Job represents a single job entry in the resume.
 type Job struct {
-	JobTitle     string   `json:"jobTitle"`
-	JobStartDate string   `json:"jobStartDate"`
-	JobEndDate   string   `json:"jobEndDate"`
-	JobEmployer  string   `json:"jobEmployer"`
-	JobLocation  string   `json:"jobLocation"`
+	JobTitle     string     `json:"jobTitle"`
+	JobStartDate string     `json:"jobStartDate"`
+	JobEndDate   string     `json:"jobEndDate"`
+	JobEmployer  string     `json:"jobEmployer"`
+	JobLocation  string     `json:"jobLocation"`
 	JobPoints    StringList `json:"jobPoints"`
 }
 
 // Project represents a single project entry in the resume.
 type Project struct {
-	ProjectTitle  string   `json:"projectTitle"`
-	ProjectTech   string   `json:"projectTech"`
-	ProjectDate   string   `json:"projectDate"`
+	ProjectTitle  string     `json:"projectTitle"`
+	ProjectTech   string     `json:"projectTech"`
+	ProjectDate   string     `json:"projectDate"`
 	ProjectPoints StringList `json:"projectPoints"`
 }
 
 // SkillCategory represents a category of skills.
 type SkillCategory struct {
-	CatTitle  string   `json:"catTitle"`
+	CatTitle  string     `json:"catTitle"`
 	CatSkills StringList `json:"catSkills"`
 }
 
@@ -130,6 +130,7 @@ func main() {
 	http.HandleFunc("/api/applications", handleApplications)
 	http.HandleFunc("/api/applications/", handleApplicationByID) // For GET, PUT, DELETE by ID
 	http.HandleFunc("/api/optimize-resume", handleOptimizeResume)
+	http.HandleFunc("/api/github-projects", handleGithubProjects)
 
 	fmt.Println("Server starting on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -162,6 +163,24 @@ func handleOptimizeResume(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(optimized)
+}
+
+func handleGithubProjects(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Only GET method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	username := strings.TrimSpace(r.URL.Query().Get("username"))
+	if username == "" {
+		http.Error(w, "username query param is required", http.StatusBadRequest)
+		return
+	}
+
+	includeAIErrors := r.URL.Query().Get("debugAI") == "1"
+	cards := getReposJson(r.Context(), username, includeAIErrors)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(cards)
 }
 
 // handleApplications handles GET to list all applications and POST to create a new application.

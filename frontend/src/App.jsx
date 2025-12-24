@@ -201,6 +201,17 @@ const normalizeHandleOrUrl = (value, basePath) => {
     return `${basePath}/${noProto}`;
 };
 
+const extractGithubUsername = (value) => {
+    if (!value) return '';
+    const trimmed = value.trim();
+    const withoutProto = trimmed.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+    const withoutHost = withoutProto.startsWith('github.com/')
+        ? withoutProto.slice('github.com/'.length)
+        : withoutProto;
+    const firstSegment = withoutHost.split(/[/?#]/)[0] || '';
+    return firstSegment.trim();
+};
+
 const mergeProfileHeader = (resume, profile) => ({
     ...(resume || defaultResume()),
     name: profile?.name || '',
@@ -284,6 +295,14 @@ function App() {
         }
         return defaultProfile();
     });
+
+    const fetchGithubProjects = async (githubValue = profile?.github || '') => {
+        const username = extractGithubUsername(githubValue);
+        if (!username) throw new Error('Set your GitHub URL in Profile first.');
+        const response = await fetch(`/api/github-projects?username=${encodeURIComponent(username)}`);
+        if (!response.ok) throw new Error(`Failed to fetch GitHub projects (${response.status})`);
+        return response.json();
+    };
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -440,6 +459,7 @@ function App() {
                             <ProfilePage
                                 profile={profile}
                                 onUpdate={handleProfileUpdate}
+                                onFetchGithubProjects={fetchGithubProjects}
                                 defaultProfile={defaultProfile}
                                 defaultCandidate={defaultCandidate}
                                 hydrateCandidateForEditor={hydrateCandidateForEditor}

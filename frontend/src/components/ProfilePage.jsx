@@ -91,10 +91,11 @@ function ChipsEditor({ value, onChange, placeholder = 'Add an item…', addLabel
     );
 }
 
-function ProfilePage({ profile, onUpdate, defaultProfile, defaultCandidate, hydrateCandidateForEditor }) {
+function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile, defaultCandidate, hydrateCandidateForEditor }) {
     const [localProfile, setLocalProfile] = useState(profile);
     const isFirstRender = useRef(true);
     const saveTimeout = useRef(null);
+    const [githubProjectsLoading, setGithubProjectsLoading] = useState(false);
 
     useEffect(() => {
         const baseProfile = typeof defaultProfile === 'function' ? defaultProfile() : {};
@@ -172,6 +173,39 @@ function ProfilePage({ profile, onUpdate, defaultProfile, defaultCandidate, hydr
     const candidate = localProfile.candidate || (typeof defaultCandidate === 'function' ? defaultCandidate() : {});
     const links = candidate.links || {};
     const preferences = candidate.preferences || {};
+
+    const handleGetGithubProjects = async () => {
+        if (!onFetchGithubProjects) return;
+        setGithubProjectsLoading(true);
+        try {
+            const cards = await onFetchGithubProjects(localProfile?.github || '');
+            const existing = new Set((candidate.projects || []).map((p) => (p.projectTitle || '').trim().toLowerCase()).filter(Boolean));
+            const nextProjects = (Array.isArray(cards) ? cards : [])
+                .map((card) => {
+                    const languages = card?.languages ? Object.keys(card.languages).sort().join(', ') : '';
+                    return {
+                        id: makeId('project'),
+                        projectTitle: card?.title || card?.fullName || card?.repo || 'Untitled Project',
+                        projectTech: languages,
+                        projectDate: card?.date || '',
+                        projectPoints: Array.isArray(card?.points) ? card.points : [],
+                    };
+                })
+                .filter((proj) => {
+                    const key = (proj.projectTitle || '').trim().toLowerCase();
+                    if (!key) return false;
+                    if (existing.has(key)) return false;
+                    existing.add(key);
+                    return true;
+                });
+
+            updateCandidate((cand) => ({ ...cand, projects: [...(cand.projects || []), ...nextProjects] }));
+        } catch (err) {
+            alert(err?.message || 'Failed to fetch GitHub projects');
+        } finally {
+            setGithubProjectsLoading(false);
+        }
+    };
 
     return (
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -284,6 +318,7 @@ function ProfilePage({ profile, onUpdate, defaultProfile, defaultCandidate, hydr
                             addButtonStyle={addButtonStyle}
                             buttonStyle={buttonStyle}
                             dangerButtonStyle={dangerButtonStyle}
+                            onGetProjects={githubProjectsLoading ? undefined : handleGetGithubProjects}
                             onAddProject={() =>
                                 updateCandidate((cand) => ({
                                     ...cand,
