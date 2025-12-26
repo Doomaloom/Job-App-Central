@@ -92,37 +92,17 @@ function ChipsEditor({ value, onChange, placeholder = 'Add an item…', addLabel
 }
 
 function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile, defaultCandidate, hydrateCandidateForEditor }) {
-    const [localProfile, setLocalProfile] = useState(profile);
-    const isFirstRender = useRef(true);
-    const saveTimeout = useRef(null);
-    const [githubProjectsLoading, setGithubProjectsLoading] = useState(false);
-
-    useEffect(() => {
+    const [localProfile, setLocalProfile] = useState(() => {
         const baseProfile = typeof defaultProfile === 'function' ? defaultProfile() : {};
         const baseCandidate = typeof defaultCandidate === 'function' ? defaultCandidate() : {};
         const candidate = profile?.candidate || baseCandidate;
-        setLocalProfile({
+        return {
             ...baseProfile,
             ...profile,
             candidate: hydrateCandidateForEditor ? hydrateCandidateForEditor(candidate) : candidate,
-        });
-    }, [profile, defaultProfile, defaultCandidate, hydrateCandidateForEditor]);
-
-    useEffect(() => {
-        if (isFirstRender.current) {
-            isFirstRender.current = false;
-            return;
-        }
-        if (saveTimeout.current) clearTimeout(saveTimeout.current);
-
-        saveTimeout.current = setTimeout(() => {
-            onUpdate(localProfile);
-        }, 500);
-
-        return () => {
-            if (saveTimeout.current) clearTimeout(saveTimeout.current);
         };
-    }, [localProfile, onUpdate]);
+    });
+    const [githubProjectsLoading, setGithubProjectsLoading] = useState(false);
 
     const updateCandidate = (updater) => {
         setLocalProfile((prev) => {
@@ -210,7 +190,7 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
     return (
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
             <h2>Your Profile</h2>
-            <p style={{ color: '#555', marginBottom: '20px' }}>Update your contact information and profile details. Changes autosave.</p>
+            <p style={{ color: '#555', marginBottom: '20px' }}>Update your contact information and profile details, then press Save.</p>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontWeight: 600 }}>Full Name</span>
@@ -254,6 +234,12 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
                     <span style={{ fontWeight: 600 }}>Location</span>
                     <input type="text" name="location" value={localProfile.location} onChange={handleChange} placeholder="City, Country" style={inputStyle} />
                 </label>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                    <button type="submit" style={{ ...addButtonStyle, padding: '10px 14px' }}>
+                        Save Profile
+                    </button>
+                </div>
 
                 <SectionCard title="Education">
                     <CandidateEducationSection

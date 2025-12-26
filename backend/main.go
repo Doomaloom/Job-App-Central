@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/genai"
 )
 
 const applicationsDir = "applications"
@@ -143,9 +143,9 @@ func handleOptimizeResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey := os.Getenv("OPENAI_API_KEY")
+	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
-		http.Error(w, "OPENAI_API_KEY not set on server", http.StatusInternalServerError)
+		http.Error(w, "GEMINI_API_KEY not set on server", http.StatusInternalServerError)
 		return
 	}
 
@@ -155,7 +155,7 @@ func handleOptimizeResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	optimized, err := optimizeResumeWithAI(apiKey, req)
+	optimized, err := optimizeResumeWithAI(r.Context(), req)
 	if err != nil {
 		http.Error(w, "Failed to optimize resume: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -402,27 +402,17 @@ func normalizeOptimizedResume(res ResumeData, fallback ResumeData) ResumeData {
 	return res
 }
 
-// optimizeResumeWithAI calls OpenAI Chat Completions to improve the resume content.
-func optimizeResumeWithAI(apiKey string, req optimizeRequest) (ResumeData, error) {
-	type message struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-	type payload struct {
-		Model       string    `json:"model"`
-		Messages    []message `json:"messages"`
-		Temperature float32   `json:"temperature"`
-	}
-
+// optimizeResumeWithAI calls Google Gemini to improve the resume content.
+func optimizeResumeWithAI(parentCtx context.Context, req optimizeRequest) (ResumeData, error) {
 	userResume, _ := json.Marshal(req.Resume)
-	model := os.Getenv("OPENAI_MODEL")
+	model := os.Getenv("GEMINI_MODEL")
 	if model == "" {
-		model = "gpt-5-mini"
+		model = "gemini-3-pro-preview"
 	}
 	systemPrompt := `You are an expert resume writer. Improve the provided resume for the given job title, company, and description.
 Rules:
 - Do not fabricate experience, companies, or technologies not present in the provided resume.
--, only rephrase and reorganize to align with the job.
+- Only rephrase and reorganize to align with the job.
 - Keep all JSON fields present, using the same schema as the provided "resume" field.
 - Respond with ONLY JSON (no markdown) that matches ResumeData: {"name": string,"number": string,"email": string,"linkedin": string,"github": string,"objective": string,"relevantCourses": [string],"jobs":[{"jobTitle": string,"jobStartDate": string,"jobEndDate": string,"jobEmployer": string,"jobLocation": string,"jobPoints": [string]}],"projects":[{"projectTitle": string,"projectTech": string,"projectDate": string,"projectPoints": [string]}],"skillCategories":[{"catTitle": string,"catSkills": [string]}]}.
 - Preserve truthful chronology; do not add dates if missing; do not claim achievements not implied by the text.`
@@ -430,57 +420,53 @@ Rules:
 	userPrompt := fmt.Sprintf("Job Title: %s\nCompany: %s\nJob Description:\n%s\n\nCurrent Resume JSON:\n%s",
 		req.JobTitle, req.Company, req.JobDescription, string(userResume))
 
-	reqBody := payload{
-		Model: model,
-		Messages: []message{
-			{Role: "system", Content: systemPrompt},
-			{Role: "user", Content: userPrompt},
-		},
-		Temperature: 0.3,
-	}
-
-	bodyBytes, _ := json.Marshal(reqBody)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	// Gemini (especially larger/preview models) can take a while; allow longer than the default HTTP client timeout.
+	ctx, cancel := context.WithTimeout(parentCtx, 120*time.Second)
 	defer cancel()
 
-	request, err := http.NewRequestWithContext(ctx, "POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(bodyBytes))
+	client, err := genai.NewClient(ctx, nil)
 	if err != nil {
-		return ResumeData{}, err
+		return ResumeData{}, fmt.Errorf("failed to create gemini client: %w", err)
 	}
-	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", "Bearer "+apiKey)
 
-	client := &http.Client{Timeout: 35 * time.Second}
-	resp, err := client.Do(request)
+	prompt := systemPrompt + "\n\n" + userPrompt
+	result, err := client.Models.GenerateContent(
+		ctx,
+		model,
+		genai.Text(prompt),
+		&genai.GenerateContentConfig{
+			Temperature:      genai.Ptr[float32](0.3),
+			MaxOutputTokens:  int32(4096),
+			ResponseMIMEType: "application/json",
+		},
+	)
 	if err != nil {
-		return ResumeData{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 300 {
-		content, _ := ioutil.ReadAll(resp.Body)
-		return ResumeData{}, fmt.Errorf("openai error: %s", string(content))
+		return ResumeData{}, fmt.Errorf("gemini generateContent failed: %w", err)
 	}
 
-	var apiResp struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
+	content := strings.TrimSpace(result.Text())
+	if content == "" {
+		return ResumeData{}, fmt.Errorf("empty gemini response")
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return ResumeData{}, fmt.Errorf("failed to decode openai response: %w", err)
-	}
-	if len(apiResp.Choices) == 0 {
-		return ResumeData{}, fmt.Errorf("no choices returned from openai")
+	content = extractJSONObject(content)
+	if strings.TrimSpace(content) == "" {
+		return ResumeData{}, fmt.Errorf("gemini did not return a JSON object")
 	}
 
-	content := strings.TrimSpace(apiResp.Choices[0].Message.Content)
 	var optimized ResumeData
 	if err := json.Unmarshal([]byte(content), &optimized); err != nil {
 		return ResumeData{}, fmt.Errorf("failed to parse optimized resume json: %w", err)
 	}
 	normalized := normalizeOptimizedResume(optimized, req.Resume)
 	return normalized, nil
+}
+
+func extractJSONObject(text string) string {
+	trimmed := strings.TrimSpace(text)
+	start := strings.Index(trimmed, "{")
+	end := strings.LastIndex(trimmed, "}")
+	if start == -1 || end == -1 || end <= start {
+		return ""
+	}
+	return trimmed[start : end+1]
 }

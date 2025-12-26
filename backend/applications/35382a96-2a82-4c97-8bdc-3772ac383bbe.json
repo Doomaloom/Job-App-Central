@@ -1,19 +1,144 @@
 {
   "id": "35382a96-2a82-4c97-8bdc-3772ac383bbe",
-  "jobTitle": "New Job Application",
-  "company": "New Company",
+  "jobTitle": "Software Development Intern",
+  "company": "Calian Group",
   "applicationStatus": "applied",
-  "jobDescription": "",
+  "jobDescription": " About the job\n\nFor more than 40 years, Calian has been solving the world’s most complex problems by pairing the brightest minds with powerful technology. Calian solutions impact the world; from the satellites in space that connect us to the farms that feed us, from the medical professionals who care for us to the governments, schools and companies that make the world better every day.\n\nThis is a unique opportunity to join Calian’s Nuclear division that has experienced tremendous growth over the last few years as we continue to power Canada’s Nuclear future, supporting projects and customers in Ontario, New Brunswick, and Saskatchewan. We are a team of purpose-driven, collaborative and passionate people, and we are constantly looking for others to join Calian to ignite new and innovative approaches to problem-solving that push us forward to improve life on Earth. If you’re excited to expand our position in nuclear, and driven to inspire the next generation, we’ll take you there.\n\nCalian Nuclear is a proud participant of the #Equalby30pledge, which represents our commitment to diversity, equity and inclusion by ensuring access to equal pay, equal opportunities, and equal leadership. As a team, we’re proud to be on our way towards gender equality and will continue to advocate for women and diversity in the energy sector.\n\nThe Calian Nuclear team provides a comprehensive range of services covering the entire nuclear lifecycle. This includes Safety Analysis, Licensing, Emergency Preparedness, Environmental Protection, Decommissioning, Waste management, and cutting-edge Systems Engineering and Robotics.\n\nPosition Overview\n\nCalian Nuclear is looking to hire a Software Development Intern with a computer engineering or computer science background to support with the maintenance and development of its proprietary software, Calian ResponseReady™. This individual will work alongside both technical and non-technical teams to define and build new features and capabilities within the software and support the development of non-technical components of the software including promotional materials, software roadmaps, and other administrative tasks.\n\nResponsibilities\n\n    Evaluate software requirements and create innovative functionalities;\n    Develop, build, and maintain efficient, reusable, and dependable code;\n    Optimize applications for performance, quality, and responsiveness;\n    Identify and resolve performance, usability and scalability issues;\n    Document application changes and development updates;\n    Develop product-related information packages, brochures, and other technical documents; and\n    Act as a resource to the Senior Director, Product Manager, and Project Managers in support of developing business opportunities and proposals.\n\nQualifications\n\n    Must be currently enrolled in a University Degree program within a relevant discipline\n    Strong verbal and written communication skills;\n    Proficiency in JavaScript, TypeScript, HTML, and CSS;\n    Experience with React ecosystem and frameworks such as Next.js;\n    Experience with Node.js ecosystem and frameworks such as Express.js;\n    Ability to build modern, clean, and responsive user interfaces, and knowledge of best practices in UI design;\n    Familiarity with REST APIs and back-end services;\n    Ability to understand and write technical documentation; and\n    Must be eligible for a reliability-level government security clearance.\n\nAssets:\n\n    Experience with building iOS and Android applications using React Native;\n    Experience with large language models (GPT) and APIs such as OpenAI Platform;\n    Knowledge of relational databases (MySQL) and ORM libraries (Prisma.js);\n    Experience with cloud-based services and platforms (AWS);\n    Understanding of version control systems (Git) and platforms (GitLab);\n    Familiarity with PHP-based applications and frameworks (CodeIgniter, Wordpress);\n    Experience and proficiency in writing technical documents; and\n\nAbility to think independently and provide insight and solutions to complex problems.\n",
   "resume": {
     "name": "Frank Kocun",
     "number": "(437)240-6814",
     "email": "frankkocun@gmail.com",
     "linkedin": "linkedin.com/in/frank-kocun",
     "github": "github.com/Doomaloom",
-    "objective": "",
-    "relevantCourses": [],
-    "jobs": [],
-    "projects": [],
-    "skillCategories": []
+    "objective": "Motivated Computer Science student seeking the Software Development Intern role at Calian Group. Eager to apply proficiency in React, JavaScript, and responsive UI design to support the development of Calian ResponseReady™. Committed to delivering efficient code and high-quality technical documentation while collaborating effectively with cross-functional teams.",
+    "relevantCourses": [
+      "Software Design",
+      "Data Structures and Analysis",
+      "Algorithms Design and Analysis",
+      "Intro to Information Security",
+      "Operating Systems",
+      "Software Tools and Systems Programming"
+    ],
+    "jobs": [
+      {
+        "jobTitle": "Deck Supervisor",
+        "jobStartDate": "Jan. 2025",
+        "jobEndDate": "Present",
+        "jobEmployer": "City of Brampton",
+        "jobLocation": "Brampton, ON",
+        "jobPoints": [
+          "Acted as a resource to management and staff, supporting administrative tasks and workflow optimization.",
+          "Demonstrated strong verbal communication skills by serving as the primary point of contact for up to 75 concurrent customers and resolving complex inquiries.",
+          "Led a team of 6 instructors, ensuring adherence to safety protocols and operational standards."
+        ]
+      },
+      {
+        "jobTitle": "Lifeguard/Swim Instructor",
+        "jobStartDate": "Mar. 2024",
+        "jobEndDate": "Present",
+        "jobEmployer": "City of Brampton",
+        "jobLocation": "Brampton, ON",
+        "jobPoints": [
+          "Maintained a secure environment by monitoring safety for large groups, demonstrating reliability and attention to detail.",
+          "Strengthened community relationships through clear, professional communication and high-quality instruction."
+        ]
+      }
+    ],
+    "projects": [
+      {
+        "projectTitle": "Job-App-Central",
+        "projectTech": "React, JavaScript, Go, HTML, Python",
+        "projectDate": "",
+        "projectPoints": [
+          "Developed a responsive Single Page Application (SPA) using React and JavaScript, ensuring a modern and intuitive user interface.",
+          "Engineered a backend API to handle data persistence and business logic, demonstrating familiarity with RESTful services and full-stack development.",
+          "Integrated external tools for dynamic PDF generation, showcasing the ability to manage document creation workflows relevant to administrative software components."
+        ]
+      },
+      {
+        "projectTitle": "COB-Aquatics-SPA",
+        "projectTech": "JavaScript, HTML, CSS, Go",
+        "projectDate": "",
+        "projectPoints": [
+          "Built a robust web application integrating a Go backend with a responsive frontend using HTML, CSS, and JavaScript.",
+          "Optimized the user interface for performance and responsiveness across devices, adhering to UI design best practices.",
+          "Managed data flow between the client and server, ensuring efficient application performance."
+        ]
+      },
+      {
+        "projectTitle": "kickstart.nvim",
+        "projectTech": "Lua, Git",
+        "projectDate": "",
+        "projectPoints": [
+          "Authored comprehensive technical documentation to guide users through setup and customization, ensuring clarity and ease of use.",
+          "Implemented a modular architecture designed for maintainability and scalability, allowing users to easily adapt the software to their needs.",
+          "Managed version control and collaborative workflows using Git, ensuring organized code repositories."
+        ]
+      },
+      {
+        "projectTitle": "MasterListMakerSite",
+        "projectTech": "Python, HTML",
+        "projectDate": "",
+        "projectPoints": [
+          "Developed a full-stack web application allowing users to create and organize data lists.",
+          "Designed accessible front-end components using HTML to deliver an intuitive user experience.",
+          "Utilized Python for backend data processing and storage, ensuring reliable data retrieval."
+        ]
+      },
+      {
+        "projectTitle": "COBAquatics",
+        "projectTech": "HTML, CSS, JavaScript",
+        "projectDate": "",
+        "projectPoints": [
+          "Designed and structured web pages using HTML and CSS to ensure a consistent and professional aesthetic.",
+          "Implemented interactive features using JavaScript to enhance user engagement and site functionality."
+        ]
+      }
+    ],
+    "skillCategories": [
+      {
+        "catTitle": "Web Development \u0026 Frameworks",
+        "catSkills": [
+          "React",
+          "JavaScript",
+          "HTML",
+          "CSS",
+          "Flask",
+          "JavaFx"
+        ]
+      },
+      {
+        "catTitle": "Languages \u0026 Databases",
+        "catSkills": [
+          "Python",
+          "SQL",
+          "Go",
+          "Java",
+          "C",
+          "Haskell",
+          "Racket"
+        ]
+      },
+      {
+        "catTitle": "Tools \u0026 Platforms",
+        "catSkills": [
+          "Git",
+          "Docker",
+          "Linux",
+          "Google Cloud Run",
+          "Firebase",
+          "Agile/Scrum"
+        ]
+      },
+      {
+        "catTitle": "Security \u0026 Concepts",
+        "catSkills": [
+          "OWASP Top 10",
+          "Web Application Vulnerabilities",
+          "Access Control",
+          "Attack Detection \u0026 Log Analysis"
+        ]
+      }
+    ]
   }
 }

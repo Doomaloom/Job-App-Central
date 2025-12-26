@@ -1,20 +1,17 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
-	"net/url"
 	"os"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/google/go-github/v80/github"
+	"google.golang.org/genai"
 )
 
 type ProjectCard struct {
@@ -213,50 +210,8 @@ func getTreePaths(ctx context.Context, client *github.Client, owner, repo, branc
 	return paths, nil
 }
 
-type geminiGenerateContentRequest struct {
-	Contents          []geminiContent        `json:"contents"`
-	GenerationConfig  geminiGenerationConfig `json:"generationConfig,omitempty"`
-	SafetySettings    []geminiSafetySetting  `json:"safetySettings,omitempty"`
-	SystemInstruction *geminiContent         `json:"systemInstruction,omitempty"`
-}
-
-type geminiContent struct {
-	Role  string       `json:"role,omitempty"`
-	Parts []geminiPart `json:"parts"`
-}
-
-type geminiPart struct {
-	Text string `json:"text,omitempty"`
-}
-
-type geminiGenerationConfig struct {
-	Temperature      float64 `json:"temperature,omitempty"`
-	MaxOutputTokens  int     `json:"maxOutputTokens,omitempty"`
-	ResponseMimeType string  `json:"responseMimeType,omitempty"`
-}
-
-type geminiSafetySetting struct {
-	Category  string `json:"category"`
-	Threshold string `json:"threshold"`
-}
-
-type geminiGenerateContentResponse struct {
-	PromptFeedback *struct {
-		BlockReason string `json:"blockReason"`
-	} `json:"promptFeedback,omitempty"`
-	Candidates []struct {
-		FinishReason string `json:"finishReason"`
-		Content      struct {
-			Parts []struct {
-				Text string `json:"text"`
-			} `json:"parts"`
-		} `json:"content"`
-	} `json:"candidates"`
-}
-
 func consultAI(ctx context.Context, project ProjectCard) ([]string, error) {
-	apiKey := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
-	if apiKey == "" {
+	if strings.TrimSpace(os.Getenv("GEMINI_API_KEY")) == "" {
 		return nil, fmt.Errorf("GEMINI_API_KEY not set")
 	}
 	model := strings.TrimSpace(os.Getenv("GEMINI_MODEL"))
@@ -266,86 +221,27 @@ func consultAI(ctx context.Context, project ProjectCard) ([]string, error) {
 
 	prompt := buildProjectPointsPrompt(project)
 
-	reqBody := geminiGenerateContentRequest{
-		Contents: []geminiContent{
-			{
-				Role: "user",
-				Parts: []geminiPart{
-					{Text: prompt},
-				},
-			},
-		},
-		GenerationConfig: geminiGenerationConfig{
-			Temperature:      0.2,
-			MaxOutputTokens:  2000,
-			ResponseMimeType: "text/plain",
-		},
-		// Keep this permissive for dev; we already constrain output format in the prompt.
-		SafetySettings: []geminiSafetySetting{
-			{Category: "HARM_CATEGORY_HARASSMENT", Threshold: "BLOCK_ONLY_HIGH"},
-			{Category: "HARM_CATEGORY_HATE_SPEECH", Threshold: "BLOCK_ONLY_HIGH"},
-			{Category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", Threshold: "BLOCK_ONLY_HIGH"},
-			{Category: "HARM_CATEGORY_DANGEROUS_CONTENT", Threshold: "BLOCK_ONLY_HIGH"},
-		},
-	}
-
-	bodyBytes, err := json.Marshal(reqBody)
+	client, err := genai.NewClient(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal gemini request: %w", err)
+		return nil, fmt.Errorf("failed to create gemini client: %w", err)
 	}
 
-	endpoint := fmt.Sprintf(
-		"https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
-		url.PathEscape(model),
-		url.QueryEscape(apiKey),
+	result, err := client.Models.GenerateContent(
+		ctx,
+		model,
+		genai.Text(prompt),
+		&genai.GenerateContentConfig{
+			Temperature:      genai.Ptr[float32](0.2),
+			MaxOutputTokens:  int32(512),
+			ResponseMIMEType: "text/plain",
+		},
 	)
-	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(bodyBytes))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create gemini request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("gemini request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read gemini response: %w", err)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("gemini error (%d): %s", resp.StatusCode, strings.TrimSpace(string(respBody)))
+		return nil, fmt.Errorf("gemini generateContent failed: %w", err)
 	}
 
-	var parsed geminiGenerateContentResponse
-	if err := json.Unmarshal(respBody, &parsed); err != nil {
-		return nil, fmt.Errorf("failed to decode gemini response: %w", err)
-	}
-
-	if len(parsed.Candidates) == 0 {
-		block := ""
-		if parsed.PromptFeedback != nil {
-			block = parsed.PromptFeedback.BlockReason
-		}
-		if block != "" {
-			return nil, fmt.Errorf("gemini returned no candidates (blockReason=%s)", block)
-		}
-		return nil, fmt.Errorf("gemini returned no candidates")
-	}
-
-	var parts []string
-	for _, part := range parsed.Candidates[0].Content.Parts {
-		if t := strings.TrimSpace(part.Text); t != "" {
-			parts = append(parts, t)
-		}
-	}
-	text := strings.TrimSpace(strings.Join(parts, "\n"))
+	text := strings.TrimSpace(result.Text())
 	if text == "" {
-		if parsed.Candidates[0].FinishReason != "" {
-			return nil, fmt.Errorf("empty gemini response (finishReason=%s)", parsed.Candidates[0].FinishReason)
-		}
 		return nil, fmt.Errorf("empty gemini response")
 	}
 
@@ -356,10 +252,6 @@ func consultAI(ctx context.Context, project ProjectCard) ([]string, error) {
 			return jsonPoints, nil
 		}
 
-		finish := parsed.Candidates[0].FinishReason
-		if finish != "" {
-			return nil, fmt.Errorf("%w (finishReason=%s); raw=%q", err, finish, truncateString(text, 300))
-		}
 		return nil, fmt.Errorf("%w; raw=%q", err, truncateString(text, 300))
 	}
 	return points, nil

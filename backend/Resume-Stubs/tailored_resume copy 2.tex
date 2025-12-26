@@ -8,7 +8,9 @@
 \documentclass[letterpaper,11pt]{article}
 
 \usepackage{latexsym}
+\usepackage[empty]{fullpage}
 \usepackage{titlesec}
+\usepackage{marvosym}
 \usepackage[usenames,dvipsnames]{color}
 \usepackage{enumitem}
 \usepackage[hidelinks]{hyperref}
@@ -129,34 +131,102 @@
 %---------OBJECTIVE------------
 \vspace{-2pt}
 \section{Candidate Summary}
-%begin-summary%
-%end-summary%
+  \begin{itemize}[leftmargin=0.15in, label={}]
+  \item \small{Third-year Computer Science student with a strong foundation in full-stack development and a passion for application security. Eager to apply software engineering skills and knowledge from Information Security coursework to identifying, assessing, and mitigating vulnerabilities in a hands-on internship.}
+  \end{itemize}
 
 %-----------EDUCATION-----------
 \vspace{-6pt}
 \section{Education}
-%begin-education%
-%end-education%
+  \resumeSubHeadingListStart
+    \resumeSubheading 
+      {University of Toronto Mississauga}{Sep. 2023 -- Jun. 2028}
+      {Honours Bachelors of Science (H.Bsc), Computer Science, UTM Co-op Internship Program}{}
+      \resumeSubItem{\textbf{Relevent Courses:} Intro to Information Security, Software Design, Algorithms Design and Analysis, Data Structures and Analysis, Operating Systems, Software Tools and Systems Programming }
+  \resumeSubHeadingListEnd
 
 
 %-----------PROGRAMMING SKILLS-----------
 \vspace{-6pt}
 \section{Skills}
-%begin-skills%
-%end-skills%
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Languages:} Python, JavaScript, SQL, Go, Java, C, HTML, CSS\\
+     \textbf{Developer Tools:} Docker, Google Cloud Run, Git, Firebase (Auth \& Security Rules), Linux, Agile/Scrum (SDLC)\\
+     \textbf{Frameworks and Libraries:} Flask, Pandas, Matplotlib, Scikit-learn, JavaFx\\
+     \textbf{Security Concepts:}  Web Application Vulnerabilities (OWASP Top 10), Attack Detection \& Log Analysis, Access Control
+    }}
+ \end{itemize}
 
  %-----------PROJECTS-----------
 \vspace{-6pt}
 \section{Projects}
-%begin-projects%
-%end-projects%
+    \resumeSubHeadingListStart
+
+    \resumeProjectHeading
+          {\textbf{Deck Supervisor Admnistrative Web Tool} $|$ \emph{Firebase, Docker, Google Cloud, Flask, Pandas }}{May. 2025 -- Present}
+          \resumeItemListStart
+            \resumeItem{Built a scalable full-stack web application and backend API to automate class scheduling and roster generation.
+            }
+            \resumeItem{Implemented security controls including user authentication with Firebase Auth and database security rules to ensure users could only access their own data.}
+            \resumeItem{Engineered backend services using Python (Flask) for data processing, deployed as a containerized service using Docker and Google Cloud Run.
+            }
+            \resumeItem{Designed and developed an intuitive, responsive web interface with JavaScript and Firebase.}
+          \resumeItemListEnd
+
+    \resumeProjectHeading
+          {\textbf{Machine Learning Prediction Model} $|$ \emph{Scikit-learn, Matplotlib, Git}}{Nov. 2024 -- present}
+          \resumeItemListStart
+            \resumeItem{Developed a machine learning model using Scikit-learn to analyze and predict patterns, demonstrating expertise in data preprocessing and predictive modeling.}
+            \resumeItem{Employed Git version control to manage different modeling approaches.
+            }
+          \resumeItemListEnd
+          
+      \resumeProjectHeading
+          {\textbf{Desktop Paint App} $|$ \emph{JavaFx, Scrum, OOP, Git}}{Oct. 2024 -- Nov. 2024}
+          \resumeItemListStart
+            \resumeItem{Engineered a desktop paint application with a team of 4, following the Scrum framework (SDLC).}
+            \resumeItem{Led the implementation of software design patterns to enhance code modularity and readability.}
+          \resumeItemListEnd
+          
+      
+    \resumeSubHeadingListEnd
 
 
 %-----------EXPERIENCE-----------
 \vspace{-6pt}
 \section{Experience}
-%begin-experience%
-%end-experience%
+  \resumeSubHeadingListStart
+
+    \resumeSubheading
+      {Deck Supervisor}{Jan. 2025 -- Present}
+      {City of Brampton}{Brampton, ON}
+      \resumeItemListStart
+        \resumeItem{Developed and managed lesson schematics for a team of 6 instructors, ensuring smooth operation.
+        }
+        \resumeItem{Acted as the primary point of contact for up to 75 concurrent customers, addressing inquiries and resolving complaints promptly (Strong communication skills for reporting).}
+      \resumeItemListEnd
+      
+% -----------Multiple Positions Heading-----------
+%    \resumeSubSubheading
+%     {Software Engineer I}{Oct 2014 - Sep 2016}
+%     \resumeItemListStart
+%        \resumeItem{Apache Beam}
+%          {Apache Beam is a unified model for defining both batch and streaming data-parallel processing pipelines}
+%     \resumeItemListEnd
+%    \resumeSubHeadingListEnd
+%-------------------------------------------
+
+    \resumeSubheading
+      {Lifeguard and Swim Instructor}{Mar. 2024 -- Present}
+      {City of Brampton}{Brampton, ON}
+      \resumeItemListStart
+        \resumeItem{Monitored the safety of up to 75 guests, ensuring a secure environment.
+        }
+        \resumeItem{Strengthened customer relationships through clear communication and high-quality instruction.}
+    \resumeItemListEnd
+ 
+  \resumeSubHeadingListEnd
 
 
 

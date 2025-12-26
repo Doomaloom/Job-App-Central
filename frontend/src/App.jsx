@@ -306,11 +306,30 @@ function App() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        try {
-            localStorage.setItem('jobapp_profile', JSON.stringify(profile));
-        } catch (e) {
-            console.warn('Could not save profile', e);
-        }
+        // Debounce + idle-save to avoid UI stalls while typing (localStorage is synchronous).
+        let idleId = null;
+        const timeoutId = setTimeout(() => {
+            const save = () => {
+                try {
+                    localStorage.setItem('jobapp_profile', JSON.stringify(profile));
+                } catch (e) {
+                    console.warn('Could not save profile', e);
+                }
+            };
+
+            if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+                idleId = window.requestIdleCallback(save, { timeout: 2000 });
+            } else {
+                save();
+            }
+        }, 1000);
+
+        return () => {
+            clearTimeout(timeoutId);
+            if (idleId && typeof window !== 'undefined' && 'cancelIdleCallback' in window) {
+                window.cancelIdleCallback(idleId);
+            }
+        };
     }, [profile]);
 
     const fetchApplications = async () => {
@@ -480,6 +499,7 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
     const [error, setError] = useState(null);
     const [optimizing, setOptimizing] = useState(false);
     const [optError, setOptError] = useState(null);
+    const [resumeEditorInitKey, setResumeEditorInitKey] = useState(0);
 
     useEffect(() => {
         const fetchApplicationDetail = async () => {
@@ -606,7 +626,8 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
             }
             const optimizedResume = await response.json();
             setApplication((prev) => ({ ...prev, resume: mergeProfileHeader(optimizedResume, profileHeader) }));
-            alert('Resume optimized with AI.');
+            // Force the ResumeEditor to reload its internal state from the optimized resume.
+            setResumeEditorInitKey((prev) => prev + 1);
         } catch (e) {
             console.error('Failed to optimize resume', e);
             setOptError(e);
@@ -674,6 +695,7 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                             application={application}
                             onResumeChange={handleResumeChange}
                             baseResume={profileResume}
+                            initKey={`${application.id || 'default'}-opt-${resumeEditorInitKey}`}
                         />
                     </div>
                 )}
