@@ -2,18 +2,12 @@ import React from 'react';
 import ObjectListSection from './ObjectListSection';
 
 const defaultMakeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-const labelStyle = { display: 'flex', flexDirection: 'column', gap: '6px' };
-const inputStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #ccc' };
-const textareaStyle = { ...inputStyle, width: '100%', resize: 'vertical' };
 
 function CandidateEducationSection({
   education,
   onChange,
   makeId = defaultMakeId,
   containerStyle,
-  addButtonStyle,
-  buttonStyle,
-  dangerButtonStyle,
 }) {
   return (
     <ObjectListSection
@@ -22,9 +16,6 @@ function CandidateEducationSection({
       onChange={onChange}
       addLabel="Add Education"
       containerStyle={{ border: 'none', padding: 0, background: 'transparent', marginBottom: 0, ...(containerStyle || {}) }}
-      addButtonStyle={addButtonStyle}
-      buttonStyle={buttonStyle}
-      dangerButtonStyle={dangerButtonStyle}
       makeNewItem={() => ({
         id: makeId('edu'),
         school: '',
@@ -45,72 +36,72 @@ function CandidateEducationSection({
       }}
       renderEditor={(entry, updateEntry) => (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          <label style={labelStyle}>
-            <span style={{ fontWeight: 600 }}>School</span>
+          <label className="label">
+            <span className="labelText">School</span>
             <input
               type="text"
               value={entry.school || ''}
               onChange={(e) => updateEntry({ ...entry, school: e.target.value })}
-              style={inputStyle}
+              className="input"
             />
           </label>
-          <label style={labelStyle}>
-            <span style={{ fontWeight: 600 }}>Location</span>
+          <label className="label">
+            <span className="labelText">Location</span>
             <input
               type="text"
               value={entry.location || ''}
               onChange={(e) => updateEntry({ ...entry, location: e.target.value })}
-              style={inputStyle}
+              className="input"
             />
           </label>
-          <label style={labelStyle}>
-            <span style={{ fontWeight: 600 }}>Degree</span>
+          <label className="label">
+            <span className="labelText">Degree</span>
             <input
               type="text"
               value={entry.degree || ''}
               onChange={(e) => updateEntry({ ...entry, degree: e.target.value })}
-              style={inputStyle}
+              className="input"
             />
           </label>
-          <label style={labelStyle}>
-            <span style={{ fontWeight: 600 }}>Field / Major</span>
+          <label className="label">
+            <span className="labelText">Field / Major</span>
             <input
               type="text"
               value={entry.field || ''}
               onChange={(e) => updateEntry({ ...entry, field: e.target.value })}
-              style={inputStyle}
+              className="input"
             />
           </label>
-          <label style={labelStyle}>
-            <span style={{ fontWeight: 600 }}>Start Date</span>
+          <label className="label">
+            <span className="labelText">Start Date</span>
             <input
               type="text"
               value={entry.startDate || ''}
               onChange={(e) => updateEntry({ ...entry, startDate: e.target.value })}
-              style={inputStyle}
+              className="input"
             />
           </label>
-          <label style={labelStyle}>
-            <span style={{ fontWeight: 600 }}>End Date</span>
+          <label className="label">
+            <span className="labelText">End Date</span>
             <input
               type="text"
               value={entry.endDate || ''}
               onChange={(e) => updateEntry({ ...entry, endDate: e.target.value })}
-              style={inputStyle}
+              className="input"
             />
           </label>
-          <label style={labelStyle}>
-            <span style={{ fontWeight: 600 }}>GPA (optional)</span>
+          <label className="label">
+            <span className="labelText">GPA (optional)</span>
             <input
               type="text"
               value={entry.gpa || ''}
               onChange={(e) => updateEntry({ ...entry, gpa: e.target.value })}
-              style={inputStyle}
+              className="input"
             />
           </label>
           <div style={{ gridColumn: '1 / -1' }}>
-            <label style={labelStyle}>
-              <span style={{ fontWeight: 600 }}>Highlights (one per line)</span>
+            <label className="label">
+              <span className="labelText">Highlights (one per line)</span>
               <textarea
                 value={Array.isArray(entry.highlights) ? entry.highlights.join('\n') : (entry.highlights || '')}
                 onChange={(e) =>
@@ -123,7 +114,7 @@ function CandidateEducationSection({
                   })
                 }
                 rows={4}
-                style={textareaStyle}
+                className="textarea"
               />
             </label>
           </div>

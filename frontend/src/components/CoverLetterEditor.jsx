@@ -1,9 +1,5 @@
 import React from 'react';
 
-const inputStyle = { width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' };
-const textareaStyle = { ...inputStyle, resize: 'vertical' };
-const buttonStyle = { padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', background: '#f5f5f5', cursor: 'pointer' };
-
 const normalizeCoverLetter = (coverLetter) => ({
     address: coverLetter?.address || '',
     greeting: coverLetter?.greeting || '',
@@ -41,7 +37,7 @@ function CoverLetterEditor({ coverLetter, onChange }) {
                     value={value.address}
                     onChange={(e) => setField('address', e.target.value)}
                     rows={4}
-                    style={textareaStyle}
+                    className="textarea"
                     placeholder={'Your Name\nStreet Address\nCity, State ZIP\nPhone | Email'}
                 />
             </div>
@@ -52,7 +48,7 @@ function CoverLetterEditor({ coverLetter, onChange }) {
                     type="text"
                     value={value.greeting}
                     onChange={(e) => setField('greeting', e.target.value)}
-                    style={inputStyle}
+                    className="input"
                     placeholder="Dear Hiring Manager,"
                 />
             </div>
@@ -60,7 +56,7 @@ function CoverLetterEditor({ coverLetter, onChange }) {
             <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <label style={{ fontWeight: 600 }}>Body Paragraphs</label>
-                    <button type="button" onClick={addParagraph} style={buttonStyle}>
+                    <button type="button" onClick={addParagraph} className="btn btn--add">
                         Add Paragraph
                     </button>
                 </div>
@@ -71,7 +67,7 @@ function CoverLetterEditor({ coverLetter, onChange }) {
                                 <div style={{ fontSize: '0.95em', color: '#555' }}>
                                     {idx === 0 ? 'First paragraph' : `Paragraph ${idx + 1}`}
                                 </div>
-                                <button type="button" onClick={() => removeParagraph(idx)} style={buttonStyle}>
+                                <button type="button" onClick={() => removeParagraph(idx)} className="btn btn--danger">
                                     Remove
                                 </button>
                             </div>
@@ -79,7 +75,7 @@ function CoverLetterEditor({ coverLetter, onChange }) {
                                 value={paragraph}
                                 onChange={(e) => setParagraph(idx, e.target.value)}
                                 rows={5}
-                                style={textareaStyle}
+                                className="textarea"
                                 placeholder={idx === 0 ? 'First paragraph…' : `Paragraph ${idx + 1}…`}
                             />
                         </div>
@@ -93,7 +89,7 @@ function CoverLetterEditor({ coverLetter, onChange }) {
                     value={value.closing}
                     onChange={(e) => setField('closing', e.target.value)}
                     rows={3}
-                    style={textareaStyle}
+                    className="textarea"
                     placeholder={'Sincerely,\nYour Name'}
                 />
             </div>

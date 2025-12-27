@@ -8,12 +8,6 @@ import SectionCard from './SectionCard';
 import SkillsSection from './SkillsSection';
 import WorkExperienceSection from './WorkExperienceSection';
 
-const inputStyle = { padding: '10px', borderRadius: '6px', border: '1px solid #ccc' };
-const textareaStyle = { ...inputStyle, resize: 'vertical' };
-const buttonStyle = { padding: '8px 10px', borderRadius: '6px', border: '1px solid #ccc', background: 'white', cursor: 'pointer' };
-const dangerButtonStyle = { ...buttonStyle, borderColor: '#c00', color: '#c00', background: '#fff0f0' };
-const addButtonStyle = { ...buttonStyle, borderColor: '#1b7c2f', color: '#1b7c2f', background: '#f2fff6' };
-
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
 function normalizeStringList(value) {
@@ -194,19 +188,19 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontWeight: 600 }}>Full Name</span>
-                    <input type="text" name="name" value={localProfile.name} onChange={handleChange} required style={inputStyle} />
+                    <input type="text" name="name" value={localProfile.name} onChange={handleChange} required className="input" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontWeight: 600 }}>Role / Title</span>
-                    <input type="text" name="role" value={localProfile.role} onChange={handleChange} style={inputStyle} />
+                    <input type="text" name="role" value={localProfile.role} onChange={handleChange} className="input" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontWeight: 600 }}>Phone</span>
-                    <input type="text" name="number" value={localProfile.number} onChange={handleChange} style={inputStyle} />
+                    <input type="text" name="number" value={localProfile.number} onChange={handleChange} className="input" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontWeight: 600 }}>Email</span>
-                    <input type="email" name="email" value={localProfile.email} onChange={handleChange} required style={inputStyle} />
+                    <input type="email" name="email" value={localProfile.email} onChange={handleChange} required className="input" />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontWeight: 600 }}>LinkedIn URL</span>
@@ -216,7 +210,7 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
                         value={localProfile.linkedin}
                         onChange={handleChange}
                         placeholder="https://linkedin.com/in/your-handle"
-                        style={inputStyle}
+                        className="input"
                     />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -227,16 +221,16 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
                         value={localProfile.github}
                         onChange={handleChange}
                         placeholder="https://github.com/your-handle"
-                        style={inputStyle}
+                        className="input"
                     />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontWeight: 600 }}>Location</span>
-                    <input type="text" name="location" value={localProfile.location} onChange={handleChange} placeholder="City, Country" style={inputStyle} />
+                    <input type="text" name="location" value={localProfile.location} onChange={handleChange} placeholder="City, Country" className="input" />
                 </label>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
-                    <button type="submit" style={{ ...addButtonStyle, padding: '10px 14px' }}>
+                    <button type="submit" className="btn btn--add" style={{ padding: '10px 14px' }}>
                         Save Profile
                     </button>
                 </div>
@@ -246,9 +240,6 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
                         education={candidate.education || []}
                         onChange={(education) => updateCandidate({ education })}
                         makeId={makeId}
-                        addButtonStyle={addButtonStyle}
-                        buttonStyle={buttonStyle}
-                        dangerButtonStyle={dangerButtonStyle}
                     />
                 </SectionCard>
 
@@ -265,9 +256,9 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
                         <WorkExperienceSection
                             showTitle={false}
                             jobs={candidate.jobs || []}
-                            addButtonStyle={addButtonStyle}
-                            buttonStyle={buttonStyle}
-                            dangerButtonStyle={dangerButtonStyle}
+                            addButtonStyle={undefined}
+                            buttonStyle={undefined}
+                            dangerButtonStyle={undefined}
                             onAddJob={() =>
                                 updateCandidate((cand) => ({
                                     ...cand,
@@ -301,9 +292,9 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
                         <ProjectsSection
                             showTitle={false}
                             projects={candidate.projects || []}
-                            addButtonStyle={addButtonStyle}
-                            buttonStyle={buttonStyle}
-                            dangerButtonStyle={dangerButtonStyle}
+                            addButtonStyle={undefined}
+                            buttonStyle={undefined}
+                            dangerButtonStyle={undefined}
                             onGetProjects={githubProjectsLoading ? undefined : handleGetGithubProjects}
                             onAddProject={() =>
                                 updateCandidate((cand) => ({
@@ -337,9 +328,9 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
                     <SkillsSection
                         showTitle={false}
                         skillCategories={candidate.skillCategories || []}
-                        addButtonStyle={addButtonStyle}
-                        buttonStyle={buttonStyle}
-                        dangerButtonStyle={dangerButtonStyle}
+                        addButtonStyle={undefined}
+                        buttonStyle={undefined}
+                        dangerButtonStyle={undefined}
                         onAddSkillCategory={() =>
                             updateCandidate((cand) => ({
                                 ...cand,
@@ -371,16 +362,13 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
                         renderSummary={(entry) => `${entry.name || 'Certification'}${entry.issuer ? ` — ${entry.issuer}` : ''}`}
                         renderEditor={(entry, onUpdateEntry) => (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                <input type="text" value={entry.name || ''} onChange={(e) => onUpdateEntry({ ...entry, name: e.target.value })} placeholder="Name" style={inputStyle} />
-                                <input type="text" value={entry.issuer || ''} onChange={(e) => onUpdateEntry({ ...entry, issuer: e.target.value })} placeholder="Issuer" style={inputStyle} />
-                                <input type="text" value={entry.date || ''} onChange={(e) => onUpdateEntry({ ...entry, date: e.target.value })} placeholder="Date (optional)" style={inputStyle} />
-                                <input type="text" value={entry.url || ''} onChange={(e) => onUpdateEntry({ ...entry, url: e.target.value })} placeholder="URL (optional)" style={inputStyle} />
+                                <input type="text" value={entry.name || ''} onChange={(e) => onUpdateEntry({ ...entry, name: e.target.value })} placeholder="Name" className="input" />
+                                <input type="text" value={entry.issuer || ''} onChange={(e) => onUpdateEntry({ ...entry, issuer: e.target.value })} placeholder="Issuer" className="input" />
+                                <input type="text" value={entry.date || ''} onChange={(e) => onUpdateEntry({ ...entry, date: e.target.value })} placeholder="Date (optional)" className="input" />
+                                <input type="text" value={entry.url || ''} onChange={(e) => onUpdateEntry({ ...entry, url: e.target.value })} placeholder="URL (optional)" className="input" />
                             </div>
                         )}
                         containerStyle={{ border: 'none', padding: 0, background: 'transparent', marginBottom: 0 }}
-                        addButtonStyle={addButtonStyle}
-                        buttonStyle={buttonStyle}
-                        dangerButtonStyle={dangerButtonStyle}
                     />
                 </SectionCard>
 

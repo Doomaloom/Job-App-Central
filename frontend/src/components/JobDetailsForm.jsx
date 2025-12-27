@@ -43,7 +43,7 @@ function JobDetailsForm({ application, onSave }) {
                     id="jobTitle"
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                    className="input"
                 />
             </div>
             <div>
@@ -53,7 +53,7 @@ function JobDetailsForm({ application, onSave }) {
                     id="company"
                     value={company}
                     onChange={(e) => setCompany(e.target.value)}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                    className="input"
                 />
             </div>
             <div>
@@ -62,7 +62,7 @@ function JobDetailsForm({ application, onSave }) {
                     id="applicationStatus"
                     value={applicationStatus}
                     onChange={(e) => setApplicationStatus(e.target.value)}
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                    className="select"
                 >
                     {ApplicationStatusOptions.map(status => (
                         <option key={status} value={status}>{status}</option>
@@ -76,10 +76,10 @@ function JobDetailsForm({ application, onSave }) {
                     value={jobDescription}
                     onChange={(e) => setJobDescription(e.target.value)}
                     rows="10"
-                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px' }}
+                    className="textarea"
                 ></textarea>
             </div>
-            <button type="submit" style={{ padding: '10px 20px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+            <button type="submit" className="btn btn--primary" style={{ padding: '10px 20px' }}>
                 Save Details
             </button>
         </form>

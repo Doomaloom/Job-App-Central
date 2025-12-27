@@ -248,7 +248,7 @@ const ProfileCard = ({ profile, onEdit }) => {
         : 'U';
 
     return (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '10px', padding: '12px 14px', marginBottom: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+        <div className="profileCard">
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: '#007bff', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
                     {initials}
@@ -261,16 +261,8 @@ const ProfileCard = ({ profile, onEdit }) => {
             </div>
             <button
                 onClick={onEdit}
-                style={{
-                    marginTop: '12px',
-                    width: '100%',
-                    padding: '8px',
-                    backgroundColor: '#0056b3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                }}
+                className="btn btn--primary"
+                style={{ marginTop: '12px', width: '100%', padding: '8px' }}
             >
                 View & Edit Profile
             </button>
@@ -429,20 +421,20 @@ function App() {
     if (error) return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Error: {error.message}</div>;
 
     return (
-        <div style={{ display: 'flex', height: '100vh', fontFamily: 'Arial, sans-serif' }}>
+        <div className="appLayout">
             {/* Sidebar */}
-            <div style={{ width: '250px', backgroundColor: '#f0f0f0', padding: '20px', borderRight: '1px solid #ccc', overflowY: 'auto' }}>
+            <div className="sidebar">
                 <ProfileCard profile={profile} onEdit={() => navigate('/profile')} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2>Job Applications</h2>
-                    <button onClick={handleCreateApplication} style={{ padding: '5px 10px' }}>+</button>
+                    <button onClick={handleCreateApplication} className="btn" style={{ padding: '5px 10px' }}>+</button>
                 </div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {applications.map((app) => (
                         <li key={app.id} style={{ marginBottom: '10px' }}>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
                                 <Link to={`/application/${app.id}`} style={{ textDecoration: 'none', color: '#333', flexGrow: 1 }}>
-                                    <div style={{ padding: '10px', backgroundColor: '#e0e0e0', borderRadius: '5px' }}>
+                                    <div className="panel panel--padded" style={{ backgroundColor: '#e0e0e0' }}>
                                         <strong>{app.jobTitle}</strong>
                                         <p style={{ margin: 0, fontSize: '0.9em' }}>{app.company}</p>
                                         <p style={{ margin: 0, fontSize: '0.8em', color: '#666' }}>Status: {app.applicationStatus}</p>
@@ -450,14 +442,8 @@ function App() {
                                 </Link>
                                 <button
                                     onClick={() => handleDeleteApplication(app.id)}
-                                    style={{
-                                        minWidth: '32px',
-                                        border: '1px solid #c00',
-                                        background: '#fff0f0',
-                                        color: '#c00',
-                                        borderRadius: '5px',
-                                        cursor: 'pointer',
-                                    }}
+                                    className="btn btn--danger"
+                                    style={{ minWidth: '32px' }}
                                     aria-label={`Delete ${app.jobTitle}`}
                                     title="Delete application"
                                 >
@@ -470,7 +456,7 @@ function App() {
             </div>
 
             {/* Main Content */}
-            <div style={{ flexGrow: 1, padding: '20px' }}>
+            <div className="mainContent">
                 <Routes>
                     <Route path="/" element={<h2>Welcome! Select an application from the sidebar or create a new one.</h2>} />
                     <Route
@@ -664,7 +650,8 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                 <h1>{application.jobTitle} at {application.company}</h1>
                 <button
                     onClick={handleGeneratePdf}
-                    style={{ padding: '10px 20px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    className="btn btn--add"
+                    style={{ padding: '10px 20px' }}
                 >
                     Generate PDF
                 </button>
@@ -702,7 +689,8 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                                 type="button"
                                 onClick={handleOptimizeResume}
                                 disabled={optimizing}
-                                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', background: optimizing ? '#eee' : '#f5f5f5' }}
+                                className="btn"
+                                style={{ padding: '8px 12px', background: optimizing ? '#eee' : undefined }}
                             >
                                 {optimizing ? 'Optimizing…' : 'Optimize with AI'}
                             </button>
@@ -722,7 +710,8 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                             <button
                                 type="button"
                                 onClick={() => handleSaveApplication(application)}
-                                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', background: '#f5f5f5' }}
+                                className="btn btn--add"
+                                style={{ padding: '8px 12px' }}
                             >
                                 Save Cover Letter
                             </button>
