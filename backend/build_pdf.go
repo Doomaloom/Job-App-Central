@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -55,6 +56,13 @@ func handleGeneratePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	coverLetterLatex := generateCoverLetterLatex(app.Resume, app.CoverLetter)
+	if strings.TrimSpace(coverLetterLatex) == "" {
+		// Always generate a cover letter PDF; if missing content, emit an empty document.
+		head, _ := readTemplate("coverletter_head.tex")
+		coverLetterLatex = head + "\\end{document}\n"
+	}
+
 	// Create a temporary directory for LaTeX compilation
 	tmpDir, err := ioutil.TempDir("", "resume-latex")
 	if err != nil {
@@ -63,11 +71,16 @@ func handleGeneratePDF(w http.ResponseWriter, r *http.Request) {
 	}
 	defer os.RemoveAll(tmpDir) // Clean up the temporary directory
 
-	// Write the generated LaTeX content to a .tex file
-	texFilePath := filepath.Join(tmpDir, "resume.tex")
-	err = ioutil.WriteFile(texFilePath, []byte(latexContent), 0644)
-	if err != nil {
-		http.Error(w, "Failed to write .tex file: "+err.Error(), http.StatusInternalServerError)
+	// Write the generated LaTeX content to .tex files
+	resumeTexPath := filepath.Join(tmpDir, "resume.tex")
+	if err := ioutil.WriteFile(resumeTexPath, []byte(latexContent), 0644); err != nil {
+		http.Error(w, "Failed to write resume .tex file: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	coverTexPath := filepath.Join(tmpDir, "cover_letter.tex")
+	if err := ioutil.WriteFile(coverTexPath, []byte(coverLetterLatex), 0644); err != nil {
+		http.Error(w, "Failed to write cover letter .tex file: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -95,25 +108,79 @@ func handleGeneratePDF(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Compile the LaTeX file to PDF
-	cmd := exec.Command(latexPath, "-output-directory="+tmpDir, texFilePath)
+	// Compile both LaTeX files to PDFs
+	if err := compileLatexToPDF(latexPath, tmpDir, resumeTexPath); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := compileLatexToPDF(latexPath, tmpDir, coverTexPath); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	resumePDFPath := filepath.Join(tmpDir, "resume.pdf")
+	resumePDF, err := ioutil.ReadFile(resumePDFPath)
+	if err != nil {
+		http.Error(w, "Failed to read generated resume PDF: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	coverPDFPath := filepath.Join(tmpDir, "cover_letter.pdf")
+	coverPDF, err := ioutil.ReadFile(coverPDFPath)
+	if err != nil {
+		http.Error(w, "Failed to read generated cover letter PDF: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	zipBytes, err := zipDocuments(resumePDF, coverPDF)
+	if err != nil {
+		http.Error(w, "Failed to package PDFs: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", "attachment; filename=\"documents.zip\"")
+	w.Write(zipBytes)
+}
+
+func compileLatexToPDF(latexPath, tmpDir, texPath string) error {
+	cmd := exec.Command(latexPath, "-interaction=nonstopmode", "-halt-on-error", "-output-directory="+tmpDir, texPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("pdflatex compilation failed: %v\nOutput:\n%s", err, string(output))
-		http.Error(w, "pdflatex compilation failed: "+err.Error()+"\n"+string(output), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("pdflatex compilation failed: %v\n%s", err, string(output))
 	}
+	return nil
+}
 
-	pdfFilePath := filepath.Join(tmpDir, "resume.pdf")
-	pdfContent, err := ioutil.ReadFile(pdfFilePath)
+func zipDocuments(resumePDF, coverPDF []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	w1, err := zw.Create("resume.pdf")
 	if err != nil {
-		http.Error(w, "Failed to read generated PDF: "+err.Error(), http.StatusInternalServerError)
-		return
+		_ = zw.Close()
+		return nil, err
+	}
+	if _, err := w1.Write(resumePDF); err != nil {
+		_ = zw.Close()
+		return nil, err
 	}
 
-	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", "attachment; filename=\"resume.pdf\"")
-	w.Write(pdfContent)
+	w2, err := zw.Create("cover_letter.pdf")
+	if err != nil {
+		_ = zw.Close()
+		return nil, err
+	}
+	if _, err := w2.Write(coverPDF); err != nil {
+		_ = zw.Close()
+		return nil, err
+	}
+
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // readTemplate reads a LaTeX template file from the Resume-Stubs directory.
@@ -319,4 +386,3 @@ func generateLatexContent(data ResumeData) (string, error) {
 
 	return finalLatex, nil
 }
-

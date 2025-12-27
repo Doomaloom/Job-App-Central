@@ -67,10 +67,13 @@ type ResumeData struct {
 }
 
 type CoverLetter struct {
-	Address    string   `json:"address"`
-	Greeting   string   `json:"greeting"`
-	Paragraphs []string `json:"paragraphs"`
-	Closing    string   `json:"closing"`
+	HiringManagerName string   `json:"hiringManagerName,omitempty"`
+	Company           string   `json:"company,omitempty"`
+	Location          string   `json:"location,omitempty"`
+	Address           string   `json:"address,omitempty"`
+	Greeting          string   `json:"greeting"`
+	Paragraphs        []string `json:"paragraphs"`
+	Closing           string   `json:"closing"`
 }
 
 // Job represents a single job entry in the resume.

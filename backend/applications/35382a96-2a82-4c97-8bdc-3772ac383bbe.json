@@ -140,5 +140,18 @@
         ]
       }
     ]
+  },
+  "coverLetter": {
+    "hiringManagerName": "Poopy Head",
+    "company": "Poop Inc.",
+    "location": "Toronto, ON",
+    "greeting": "Dear Poopy Head,",
+    "paragraphs": [
+      "This is the first Paragraph aasasfdsadfg asdfgklasjglasj dklasfjlkasfjdlkasdfj asklfdj asdfkljasdf klasdfkljasdf jkl asdfklj asdfjkl asdfjkl asdfjkl asdfjklasdf jkl dfsajkl asdfjkl asdfjkl asdfjkl asdfjkl asdfjkl asdfjkl asdfjkl asdfjkl asdfjkl asdfjkl asdfjkl asdfjkl asdf",
+      "This is the Second Paragraphsa dfasdfjias; dfojas;lfkjasl;k jaklfj aklsj askldfj laksdjflaksjfjklasflash;lk asjf'paj;olishujklfads gfluasdg flkasdhfg ;loiasdfaospihfg q[a'fhj[pfjwo[apegh fqwlejkbnvl;asdfjknhv lkuofasdhfg;poaiqwhjfpio[vschj l.;asjnfl; ahf pasdhjfio ashdfpi;h sadfpoih asdfpoihnasd f;lnasdhjk",
+      "This is the third paragraphsdl;f asjfk;l sajdlsakfl k;fsajjkl;dfsa jklasdf jklasdf jkl jklasdf jkldfsa jasfjd",
+      "This is the fourth and last paragraph sapdfja sfak';j [jp'oja [pja s["
+    ],
+    "closing": "Sincerely, \nFrank Kocun"
   }
 }

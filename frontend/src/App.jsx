@@ -14,6 +14,9 @@ const defaultResume = () => ({
 });
 
 const defaultCoverLetter = () => ({
+    hiringManagerName: '',
+    company: '',
+    location: '',
     address: '',
     greeting: '',
     paragraphs: [''],
@@ -230,6 +233,9 @@ const mergeProfileHeader = (resume, profile) => ({
 });
 
 const normalizeCoverLetter = (coverLetter) => ({
+    hiringManagerName: coverLetter?.hiringManagerName || '',
+    company: coverLetter?.company || '',
+    location: coverLetter?.location || '',
     address: coverLetter?.address || '',
     greeting: coverLetter?.greeting || '',
     paragraphs: Array.isArray(coverLetter?.paragraphs) && coverLetter.paragraphs.length > 0 ? coverLetter.paragraphs : [''],
@@ -585,12 +591,12 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `resume_${application.company}.pdf`;
+            a.download = `documents_${application.company || 'application'}.zip`;
             document.body.appendChild(a);
             a.click();
             a.remove();
             window.URL.revokeObjectURL(url);
-            alert('PDF generated and downloaded!');
+            alert('Documents generated and downloaded!');
 
         } catch (e) {
             console.error("Failed to generate PDF:", e);

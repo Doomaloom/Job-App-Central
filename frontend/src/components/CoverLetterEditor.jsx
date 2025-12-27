@@ -1,6 +1,9 @@
 import React from 'react';
 
 const normalizeCoverLetter = (coverLetter) => ({
+    hiringManagerName: coverLetter?.hiringManagerName || '',
+    company: coverLetter?.company || '',
+    location: coverLetter?.location || '',
     address: coverLetter?.address || '',
     greeting: coverLetter?.greeting || '',
     paragraphs: Array.isArray(coverLetter?.paragraphs) && coverLetter.paragraphs.length > 0 ? coverLetter.paragraphs : [''],
@@ -32,14 +35,39 @@ function CoverLetterEditor({ coverLetter, onChange }) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
-                <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Address</label>
-                <textarea
-                    value={value.address}
-                    onChange={(e) => setField('address', e.target.value)}
-                    rows={4}
-                    className="textarea"
-                    placeholder={'Your Name\nStreet Address\nCity, State ZIP\nPhone | Email'}
-                />
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600 }}>Recipient</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div className="label">
+                        <span className="labelText">Hiring Manager Name</span>
+                        <input
+                            type="text"
+                            value={value.hiringManagerName}
+                            onChange={(e) => setField('hiringManagerName', e.target.value)}
+                            className="input"
+                            placeholder="Jane Smith"
+                        />
+                    </div>
+                    <div className="label">
+                        <span className="labelText">Company</span>
+                        <input
+                            type="text"
+                            value={value.company}
+                            onChange={(e) => setField('company', e.target.value)}
+                            className="input"
+                            placeholder="Acme Inc."
+                        />
+                    </div>
+                    <div className="label" style={{ gridColumn: '1 / -1' }}>
+                        <span className="labelText">Location</span>
+                        <input
+                            type="text"
+                            value={value.location}
+                            onChange={(e) => setField('location', e.target.value)}
+                            className="input"
+                            placeholder="Toronto, ON"
+                        />
+                    </div>
+                </div>
             </div>
 
             <div>
