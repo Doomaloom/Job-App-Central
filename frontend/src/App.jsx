@@ -3,6 +3,7 @@ import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import JobDetailsForm from './components/JobDetailsForm';
 import ResumeEditor from './components/ResumeEditor'; // Import the new component
 import ProfilePage from './components/ProfilePage';
+import CoverLetterEditor from './components/CoverLetterEditor';
 
 const defaultResume = () => ({
     objective: '',
@@ -10,6 +11,13 @@ const defaultResume = () => ({
     jobs: [],
     projects: [],
     skillCategories: [],
+});
+
+const defaultCoverLetter = () => ({
+    address: '',
+    greeting: '',
+    paragraphs: [''],
+    closing: '',
 });
 
 const defaultCandidate = () => ({
@@ -221,8 +229,12 @@ const mergeProfileHeader = (resume, profile) => ({
     github: normalizeHandleOrUrl(profile?.github || '', 'github.com'),
 });
 
-// Placeholder Component for Cover Letter Tab
-const CoverLetterTab = ({ application }) => <div>Cover Letter for Application: {application ? application.jobTitle : ''}</div>;
+const normalizeCoverLetter = (coverLetter) => ({
+    address: coverLetter?.address || '',
+    greeting: coverLetter?.greeting || '',
+    paragraphs: Array.isArray(coverLetter?.paragraphs) && coverLetter.paragraphs.length > 0 ? coverLetter.paragraphs : [''],
+    closing: coverLetter?.closing || '',
+});
 
 // Profile card shown at the top of the sidebar
 const ProfileCard = ({ profile, onEdit }) => {
@@ -357,6 +369,7 @@ function App() {
             jobDescription: "",
             // Start with an empty resume; header is seeded from profile automatically
             resume: mergeProfileHeader(defaultResume(), profile),
+            coverLetter: defaultCoverLetter(),
         };
         try {
             const payload = normalizeApplicationForBackend(newApp);
@@ -604,6 +617,10 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
         setApplication(prevApp => ({ ...prevApp, resume: mergeProfileHeader(newResumeData, profileHeader) }))
     }
 
+    const handleCoverLetterChange = (nextCoverLetter) => {
+        setApplication((prev) => ({ ...prev, coverLetter: normalizeCoverLetter(nextCoverLetter) }));
+    };
+
     const handleOptimizeResume = async () => {
         if (!application) return;
         setOptError(null);
@@ -699,7 +716,23 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                         />
                     </div>
                 )}
-                {activeTab === 'coverletter' && <CoverLetterTab application={application} />}
+                {activeTab === 'coverletter' && (
+                    <div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '10px' }}>
+                            <button
+                                type="button"
+                                onClick={() => handleSaveApplication(application)}
+                                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', background: '#f5f5f5' }}
+                            >
+                                Save Cover Letter
+                            </button>
+                        </div>
+                        <CoverLetterEditor
+                            coverLetter={application?.coverLetter || defaultCoverLetter()}
+                            onChange={handleCoverLetterChange}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -66,6 +66,13 @@ type ResumeData struct {
 	SkillCategories []SkillCategory `json:"skillCategories"`
 }
 
+type CoverLetter struct {
+	Address    string   `json:"address"`
+	Greeting   string   `json:"greeting"`
+	Paragraphs []string `json:"paragraphs"`
+	Closing    string   `json:"closing"`
+}
+
 // Job represents a single job entry in the resume.
 type Job struct {
 	JobTitle     string     `json:"jobTitle"`
@@ -92,12 +99,13 @@ type SkillCategory struct {
 
 // Application represents a full job application, including resume data.
 type Application struct {
-	ID                string     `json:"id"`
-	JobTitle          string     `json:"jobTitle"`
-	Company           string     `json:"company"`
-	ApplicationStatus string     `json:"applicationStatus"`
-	JobDescription    string     `json:"jobDescription"`
-	Resume            ResumeData `json:"resume"`
+	ID                string       `json:"id"`
+	JobTitle          string       `json:"jobTitle"`
+	Company           string       `json:"company"`
+	ApplicationStatus string       `json:"applicationStatus"`
+	JobDescription    string       `json:"jobDescription"`
+	Resume            ResumeData   `json:"resume"`
+	CoverLetter       *CoverLetter `json:"coverLetter,omitempty"`
 }
 
 // ApplicationSummary represents a brief overview of a job application for listing.
