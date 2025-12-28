@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,10 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
-	"google.golang.org/genai"
 )
 
 const applicationsDir = "applications"
@@ -127,6 +124,14 @@ type optimizeRequest struct {
 	Resume         ResumeData `json:"resume"`
 }
 
+type optimizeCoverLetterRequest struct {
+	JobTitle       string       `json:"jobTitle"`
+	Company        string       `json:"company"`
+	JobDescription string       `json:"jobDescription"`
+	Resume         ResumeData   `json:"resume"`
+	CoverLetter    *CoverLetter `json:"coverLetter"`
+}
+
 func main() {
 	// Ensure the applications directory exists
 	if _, err := os.Stat(applicationsDir); os.IsNotExist(err) {
@@ -141,6 +146,7 @@ func main() {
 	http.HandleFunc("/api/applications", handleApplications)
 	http.HandleFunc("/api/applications/", handleApplicationByID) // For GET, PUT, DELETE by ID
 	http.HandleFunc("/api/optimize-resume", handleOptimizeResume)
+	http.HandleFunc("/api/optimize-coverletter", handleOptimizeCoverLetter)
 	http.HandleFunc("/api/github-projects", handleGithubProjects)
 
 	fmt.Println("Server starting on port 8080...")
@@ -174,6 +180,35 @@ func handleOptimizeResume(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(optimized)
+}
+
+func handleOptimizeCoverLetter(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST method is allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		http.Error(w, "GEMINI_API_KEY not set on server", http.StatusInternalServerError)
+		return
+	}
+
+	var req optimizeCoverLetterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	optimized, err := optimizeCoverLetterWithAI(r.Context(), req)
+	if err != nil {
+		http.Error(w, "Failed to optimize cover letter: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return body paragraphs only, separated by `|`.
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(strings.Join(optimized.Paragraphs, " | ") + "\n"))
 }
 
 func handleGithubProjects(w http.ResponseWriter, r *http.Request) {
@@ -413,71 +448,4 @@ func normalizeOptimizedResume(res ResumeData, fallback ResumeData) ResumeData {
 	return res
 }
 
-// optimizeResumeWithAI calls Google Gemini to improve the resume content.
-func optimizeResumeWithAI(parentCtx context.Context, req optimizeRequest) (ResumeData, error) {
-	userResume, _ := json.Marshal(req.Resume)
-	model := os.Getenv("GEMINI_MODEL")
-	if model == "" {
-		model = "gemini-3-pro-preview"
-	}
-	systemPrompt := `You are an expert resume writer. Improve the provided resume for the given job title, company, and description.
-Rules:
-- Do not fabricate experience, companies, or technologies not present in the provided resume.
-- Only rephrase and reorganize to align with the job.
-- Keep all JSON fields present, using the same schema as the provided "resume" field.
-- Respond with ONLY JSON (no markdown) that matches ResumeData: {"name": string,"number": string,"email": string,"linkedin": string,"github": string,"objective": string,"relevantCourses": [string],"jobs":[{"jobTitle": string,"jobStartDate": string,"jobEndDate": string,"jobEmployer": string,"jobLocation": string,"jobPoints": [string]}],"projects":[{"projectTitle": string,"projectTech": string,"projectDate": string,"projectPoints": [string]}],"skillCategories":[{"catTitle": string,"catSkills": [string]}]}.
-- Preserve truthful chronology; do not add dates if missing; do not claim achievements not implied by the text.`
-
-	userPrompt := fmt.Sprintf("Job Title: %s\nCompany: %s\nJob Description:\n%s\n\nCurrent Resume JSON:\n%s",
-		req.JobTitle, req.Company, req.JobDescription, string(userResume))
-
-	// Gemini (especially larger/preview models) can take a while; allow longer than the default HTTP client timeout.
-	ctx, cancel := context.WithTimeout(parentCtx, 120*time.Second)
-	defer cancel()
-
-	client, err := genai.NewClient(ctx, nil)
-	if err != nil {
-		return ResumeData{}, fmt.Errorf("failed to create gemini client: %w", err)
-	}
-
-	prompt := systemPrompt + "\n\n" + userPrompt
-	result, err := client.Models.GenerateContent(
-		ctx,
-		model,
-		genai.Text(prompt),
-		&genai.GenerateContentConfig{
-			Temperature:      genai.Ptr[float32](0.3),
-			MaxOutputTokens:  int32(4096),
-			ResponseMIMEType: "application/json",
-		},
-	)
-	if err != nil {
-		return ResumeData{}, fmt.Errorf("gemini generateContent failed: %w", err)
-	}
-
-	content := strings.TrimSpace(result.Text())
-	if content == "" {
-		return ResumeData{}, fmt.Errorf("empty gemini response")
-	}
-	content = extractJSONObject(content)
-	if strings.TrimSpace(content) == "" {
-		return ResumeData{}, fmt.Errorf("gemini did not return a JSON object")
-	}
-
-	var optimized ResumeData
-	if err := json.Unmarshal([]byte(content), &optimized); err != nil {
-		return ResumeData{}, fmt.Errorf("failed to parse optimized resume json: %w", err)
-	}
-	normalized := normalizeOptimizedResume(optimized, req.Resume)
-	return normalized, nil
-}
-
-func extractJSONObject(text string) string {
-	trimmed := strings.TrimSpace(text)
-	start := strings.Index(trimmed, "{")
-	end := strings.LastIndex(trimmed, "}")
-	if start == -1 || end == -1 || end <= start {
-		return ""
-	}
-	return trimmed[start : end+1]
-}
+// optimizeResumeWithAI moved to optimize_ai.go

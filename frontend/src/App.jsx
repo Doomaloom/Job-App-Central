@@ -242,6 +242,16 @@ const normalizeCoverLetter = (coverLetter) => ({
     closing: coverLetter?.closing || '',
 });
 
+const parseCoverLetterParagraphs = (text) => {
+    const safe = typeof text === 'string' ? text : '';
+    const trimmed = safe.replace(/^```/, '').replace(/```$/, '').trim();
+    return trimmed
+        .split('|')
+        .map((p) => p.trim().replace(/^["']|["']$/g, ''))
+        .map((p) => p.trim())
+        .filter(Boolean);
+};
+
 // Profile card shown at the top of the sidebar
 const ProfileCard = ({ profile, onEdit }) => {
     const initials = profile.name
@@ -504,6 +514,8 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
     const [error, setError] = useState(null);
     const [optimizing, setOptimizing] = useState(false);
     const [optError, setOptError] = useState(null);
+    const [optimizingCover, setOptimizingCover] = useState(false);
+    const [optCoverError, setOptCoverError] = useState(null);
     const [resumeEditorInitKey, setResumeEditorInitKey] = useState(0);
 
     useEffect(() => {
@@ -646,6 +658,43 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
         }
     };
 
+    const handleOptimizeCoverLetter = async () => {
+        if (!application) return;
+        setOptCoverError(null);
+        setOptimizingCover(true);
+        try {
+            const payload = {
+                jobTitle: application.jobTitle,
+                company: application.company,
+                jobDescription: application.jobDescription,
+                resume: mergeProfileHeader(profileResume, profileHeader),
+                coverLetter: application.coverLetter || null,
+            };
+            const response = await fetch('/api/optimize-coverletter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!response.ok) {
+                const text = await response.text().catch(() => '');
+                throw new Error(text || `HTTP ${response.status}`);
+            }
+            const optimizedText = await response.text();
+            const paragraphs = parseCoverLetterParagraphs(optimizedText);
+            if (paragraphs.length === 0) throw new Error('No paragraphs returned from AI');
+            setApplication((prev) => ({
+                ...prev,
+                coverLetter: normalizeCoverLetter({ ...(prev.coverLetter || {}), paragraphs }),
+            }));
+        } catch (e) {
+            console.error('Failed to optimize cover letter', e);
+            setOptCoverError(e);
+            alert('Failed to optimize cover letter.');
+        } finally {
+            setOptimizingCover(false);
+        }
+    };
+
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading application details...</div>;
     if (error) return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Error loading application: {error.message}</div>;
     if (!application) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Application not found.</div>;
@@ -715,12 +764,22 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginBottom: '10px' }}>
                             <button
                                 type="button"
+                                onClick={handleOptimizeCoverLetter}
+                                disabled={optimizingCover}
+                                className="btn"
+                                style={{ padding: '8px 12px', background: optimizingCover ? '#eee' : undefined }}
+                            >
+                                {optimizingCover ? 'Optimizing…' : 'Optimize Cover Letter'}
+                            </button>
+                            <button
+                                type="button"
                                 onClick={() => handleSaveApplication(application)}
                                 className="btn btn--add"
                                 style={{ padding: '8px 12px' }}
                             >
                                 Save Cover Letter
                             </button>
+                            {optCoverError && <span style={{ color: 'red' }}>AI optimize failed</span>}
                         </div>
                         <CoverLetterEditor
                             coverLetter={application?.coverLetter || defaultCoverLetter()}

@@ -1,0 +1,6 @@
+./build_coverletter.go
+./build_pdf.go
+./build_projects.go
+./coverletter_text.go
+./main.go
+./optimize_ai.go
