@@ -8,6 +8,44 @@ import SectionCard from './SectionCard';
 import SkillsSection from './SkillsSection';
 import WorkExperienceSection from './WorkExperienceSection';
 
+const inputStyle = {
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: '10px',
+    border: '1px solid #d0d7de',
+    fontSize: '14px',
+    boxSizing: 'border-box',
+};
+
+const textareaStyle = {
+    ...inputStyle,
+    minHeight: '110px',
+    resize: 'vertical',
+};
+
+const buttonStyle = {
+    padding: '8px 12px',
+    borderRadius: '10px',
+    border: '1px solid #d0d7de',
+    backgroundColor: '#f6f8fa',
+    cursor: 'pointer',
+    fontWeight: 600,
+};
+
+const addButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: '#0b5ed7',
+    borderColor: '#0b5ed7',
+    color: '#fff',
+};
+
+const dangerButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: '#dc3545',
+    borderColor: '#dc3545',
+    color: '#fff',
+};
+
 const makeId = (prefix) => `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 
 function normalizeStringList(value) {
@@ -97,6 +135,17 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
         };
     });
     const [githubProjectsLoading, setGithubProjectsLoading] = useState(false);
+
+    useEffect(() => {
+        const baseProfile = typeof defaultProfile === 'function' ? defaultProfile() : {};
+        const baseCandidate = typeof defaultCandidate === 'function' ? defaultCandidate() : {};
+        const candidate = profile?.candidate || baseCandidate;
+        setLocalProfile({
+            ...baseProfile,
+            ...profile,
+            candidate: hydrateCandidateForEditor ? hydrateCandidateForEditor(candidate) : candidate,
+        });
+    }, [profile, defaultProfile, defaultCandidate, hydrateCandidateForEditor]);
 
     const updateCandidate = (updater) => {
         setLocalProfile((prev) => {

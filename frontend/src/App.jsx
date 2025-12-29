@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import JobDetailsForm from './components/JobDetailsForm';
 import ResumeEditor from './components/ResumeEditor'; // Import the new component
 import ProfilePage from './components/ProfilePage';
 import CoverLetterEditor from './components/CoverLetterEditor';
+import { supabase } from './supabaseClient';
 
 const defaultResume = () => ({
     objective: '',
@@ -300,6 +301,8 @@ function App() {
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [authLoading, setAuthLoading] = useState(true);
+    const [session, setSession] = useState(null);
     const [profile, setProfile] = useState(() => {
         try {
             const stored = localStorage.getItem('jobapp_profile');
@@ -316,45 +319,87 @@ function App() {
         return defaultProfile();
     });
 
+    useEffect(() => {
+        let mounted = true;
+        setAuthLoading(true);
+        supabase.auth.getSession().then(({ data, error }) => {
+            if (!mounted) return;
+            if (error) console.warn('Failed to get Supabase session', error);
+            setSession(data?.session || null);
+            setAuthLoading(false);
+        });
+        const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+            if (!mounted) return;
+            setSession(nextSession);
+        });
+        return () => {
+            mounted = false;
+            data?.subscription?.unsubscribe();
+        };
+    }, []);
+
+    const authedFetch = useCallback(
+        async (url, options = {}) => {
+            const token = session?.access_token;
+            const headers = new Headers(options.headers || {});
+            if (token) headers.set('Authorization', `Bearer ${token}`);
+            return fetch(url, { ...options, headers });
+        },
+        [session?.access_token],
+    );
+
+    const signInWithGoogle = async () => {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin,
+            },
+        });
+        if (error) {
+            alert(error.message || 'Failed to start Google sign-in');
+        }
+    };
+
+    const signOut = async () => {
+        await supabase.auth.signOut();
+        setSession(null);
+        setApplications([]);
+        setLoading(false);
+    };
+
     const fetchGithubProjects = async (githubValue = profile?.github || '') => {
         const username = extractGithubUsername(githubValue);
         if (!username) throw new Error('Set your GitHub URL in Profile first.');
-        const response = await fetch(`/api/github-projects?username=${encodeURIComponent(username)}`);
+        const response = await authedFetch(`/api/github-projects?username=${encodeURIComponent(username)}`);
         if (!response.ok) throw new Error(`Failed to fetch GitHub projects (${response.status})`);
         return response.json();
     };
     const navigate = useNavigate();
 
-    useEffect(() => {
-        // Debounce + idle-save to avoid UI stalls while typing (localStorage is synchronous).
-        let idleId = null;
-        const timeoutId = setTimeout(() => {
-            const save = () => {
-                try {
-                    localStorage.setItem('jobapp_profile', JSON.stringify(profile));
-                } catch (e) {
-                    console.warn('Could not save profile', e);
-                }
-            };
-
-            if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-                idleId = window.requestIdleCallback(save, { timeout: 2000 });
-            } else {
-                save();
+    const loadProfileFromServer = useCallback(async () => {
+        if (!session?.access_token) return;
+        try {
+            const resp = await authedFetch('/api/profile');
+            if (resp.status === 404) return;
+            if (!resp.ok) {
+                const text = await resp.text().catch(() => '');
+                throw new Error(text || `HTTP error! status: ${resp.status}`);
             }
-        }, 1000);
-
-        return () => {
-            clearTimeout(timeoutId);
-            if (idleId && typeof window !== 'undefined' && 'cancelIdleCallback' in window) {
-                window.cancelIdleCallback(idleId);
-            }
-        };
-    }, [profile]);
+            const data = await resp.json();
+            const migratedCandidate = data?.candidate
+                ? hydrateCandidateForEditor(data.candidate)
+                : (data?.resume ? hydrateCandidateForEditor(data.resume) : hydrateCandidateForEditor(defaultCandidate()));
+            setProfile({ ...defaultProfile(), ...data, candidate: migratedCandidate });
+            localStorage.setItem('jobapp_profile', JSON.stringify({ ...defaultProfile(), ...data, candidate: migratedCandidate }));
+        } catch (e) {
+            console.error('Failed to load profile from server', e);
+        }
+    }, [authedFetch, session?.access_token]);
 
     const fetchApplications = async () => {
+        if (!session?.access_token) return;
         try {
-            const response = await fetch('/api/applications');
+            const response = await authedFetch('/api/applications');
             if (!response.ok) {
                 const text = await response.text().catch(() => '');
                 throw new Error(text || `HTTP error! status: ${response.status}`);
@@ -381,7 +426,7 @@ function App() {
         };
         try {
             const payload = normalizeApplicationForBackend(newApp);
-            const response = await fetch('/api/applications', {
+            const response = await authedFetch('/api/applications', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -400,18 +445,45 @@ function App() {
         }
     };
 
-    const handleProfileUpdate = (updatedProfile) => {
-        setProfile({
+    const handleProfileUpdate = async (updatedProfile) => {
+        const nextProfile = {
             ...updatedProfile,
             candidate: hydrateCandidateForEditor(updatedProfile.candidate || defaultCandidate()),
-        });
+        };
+        setProfile(nextProfile);
+
+        try {
+            if (session?.access_token) {
+                const resp = await authedFetch('/api/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(nextProfile),
+                });
+                if (!resp.ok) {
+                    const text = await resp.text().catch(() => '');
+                    throw new Error(text || `HTTP error! status: ${resp.status}`);
+                }
+                const saved = await resp.json();
+                setProfile({
+                    ...defaultProfile(),
+                    ...saved,
+                    candidate: saved?.candidate
+                        ? hydrateCandidateForEditor(saved.candidate)
+                        : (saved?.resume ? hydrateCandidateForEditor(saved.resume) : hydrateCandidateForEditor(defaultCandidate())),
+                });
+            }
+            localStorage.setItem('jobapp_profile', JSON.stringify(nextProfile));
+        } catch (e) {
+            console.error('Failed to save profile', e);
+            alert(e?.message || 'Failed to save profile');
+        }
     };
 
     const handleDeleteApplication = async (appId) => {
         const confirmed = window.confirm('Are you sure you want to delete this application? This cannot be undone.');
         if (!confirmed) return;
         try {
-            const response = await fetch(`/api/applications/${appId}`, {
+            const response = await authedFetch(`/api/applications/${appId}`, {
                 method: 'DELETE',
             });
             if (!response.ok) {
@@ -430,8 +502,32 @@ function App() {
     };
 
     useEffect(() => {
-        fetchApplications();
-    }, []);
+        if (authLoading) return;
+        if (!session?.access_token) {
+            setLoading(false);
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        loadProfileFromServer().finally(() => {
+            fetchApplications();
+        });
+    }, [authLoading, session?.access_token, loadProfileFromServer]);
+
+    if (authLoading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
+    if (!session) {
+        return (
+            <div className="appLayout" style={{ justifyContent: 'center', alignItems: 'center' }}>
+                <div className="panel panel--padded" style={{ width: 'min(520px, 92vw)' }}>
+                    <h2 style={{ marginTop: 0 }}>Sign in to Job App Central</h2>
+                    <p style={{ color: '#555' }}>Use Google to sign in and sync your profile/applications.</p>
+                    <button className="btn btn--primary" onClick={signInWithGoogle} style={{ width: '100%', padding: '10px 14px' }}>
+                        Continue with Google
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading applications...</div>;
     if (error) return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Error: {error.message}</div>;
@@ -441,12 +537,20 @@ function App() {
             {/* Sidebar */}
             <div className="sidebar">
                 <ProfileCard profile={profile} onEdit={() => navigate('/profile')} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '0.85em', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {session?.user?.email || ''}
+                    </div>
+                    <button onClick={signOut} className="btn" style={{ padding: '6px 10px' }}>
+                        Sign out
+                    </button>
+                </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2>Job Applications</h2>
                     <button onClick={handleCreateApplication} className="btn" style={{ padding: '5px 10px' }}>+</button>
                 </div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {applications.map((app) => (
+                    {(applications || []).map((app) => (
                         <li key={app.id} style={{ marginBottom: '10px' }}>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
                                 <Link to={`/application/${app.id}`} style={{ textDecoration: 'none', color: '#333', flexGrow: 1 }}>
@@ -484,6 +588,7 @@ function App() {
                                 onApplicationUpdate={fetchApplications} // Pass refresh function to update sidebar
                                 profileResume={candidateToResume(profile.candidate)}
                                 profileHeader={profile}
+                                authedFetch={authedFetch}
                             />
                         }
                     />
@@ -507,7 +612,7 @@ function App() {
 }
 
 // Component to display specific application details with tabs
-function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profileResume, profileHeader }) {
+function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profileResume, profileHeader, authedFetch }) {
     const { id } = useParams();
     const [application, setApplication] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -522,7 +627,7 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
         const fetchApplicationDetail = async () => {
             setLoading(true);
             try {
-                const response = await fetch(`/api/applications/${id}`);
+                const response = await authedFetch(`/api/applications/${id}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -554,7 +659,7 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
         try {
             const resumeWithHeader = mergeProfileHeader(updatedApp.resume, profileHeader);
             const payload = normalizeApplicationForBackend({ ...updatedApp, resume: resumeWithHeader });
-            const response = await fetch(`/api/applications/${updatedApp.id}`, {
+            const response = await authedFetch(`/api/applications/${updatedApp.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -586,7 +691,7 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                 resume: stripEditorIds(normalizedApp.resume),
             };
 
-            const response = await fetch('/api/generate-pdf', {
+            const response = await authedFetch('/api/generate-pdf', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -636,7 +741,7 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                 jobDescription: application.jobDescription,
                 resume: mergeProfileHeader(profileResume, profileHeader),
             };
-            const response = await fetch('/api/optimize-resume', {
+            const response = await authedFetch('/api/optimize-resume', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
@@ -670,7 +775,7 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                 resume: mergeProfileHeader(profileResume, profileHeader),
                 coverLetter: application.coverLetter || null,
             };
-            const response = await fetch('/api/optimize-coverletter', {
+            const response = await authedFetch('/api/optimize-coverletter', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),

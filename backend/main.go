@@ -1,19 +1,22 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
-const applicationsDir = "applications"
+var (
+	store    *dbStore
+	verifier *jwtVerifier
+)
 
 // StringList supports either a JSON array of strings or a comma-separated string.
 type StringList []string
@@ -133,24 +136,34 @@ type optimizeCoverLetterRequest struct {
 }
 
 func main() {
-	// Ensure the applications directory exists
-	if _, err := os.Stat(applicationsDir); os.IsNotExist(err) {
-		os.Mkdir(applicationsDir, 0755)
+	var err error
+	verifier, err = newJWTVerifierFromEnv()
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	store, err = newDBStore(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer store.Close()
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Welcome to the Job Application Backend!")
 	})
 
-	http.HandleFunc("/api/generate-pdf", handleGeneratePDF)
-	http.HandleFunc("/api/applications", handleApplications)
-	http.HandleFunc("/api/applications/", handleApplicationByID) // For GET, PUT, DELETE by ID
-	http.HandleFunc("/api/optimize-resume", handleOptimizeResume)
-	http.HandleFunc("/api/optimize-coverletter", handleOptimizeCoverLetter)
-	http.HandleFunc("/api/github-projects", handleGithubProjects)
+	mux.HandleFunc("/api/profile", requireAuth(verifier, handleProfile))
+	mux.HandleFunc("/api/generate-pdf", requireAuth(verifier, handleGeneratePDF))
+	mux.HandleFunc("/api/applications", requireAuth(verifier, handleApplications))
+	mux.HandleFunc("/api/applications/", requireAuth(verifier, handleApplicationByID)) // For GET, PUT, DELETE by ID
+	mux.HandleFunc("/api/optimize-resume", requireAuth(verifier, handleOptimizeResume))
+	mux.HandleFunc("/api/optimize-coverletter", requireAuth(verifier, handleOptimizeCoverLetter))
+	mux.HandleFunc("/api/github-projects", requireAuth(verifier, handleGithubProjects))
 
 	fmt.Println("Server starting on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
 
 // handleOptimizeResume calls OpenAI to optimize the resume based on job details.
@@ -231,40 +244,19 @@ func handleGithubProjects(w http.ResponseWriter, r *http.Request) {
 
 // handleApplications handles GET to list all applications and POST to create a new application.
 func handleApplications(w http.ResponseWriter, r *http.Request) {
+	userID, err := userIDFromRequest(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodGet:
-		files, err := ioutil.ReadDir(applicationsDir)
+		summaries, err := store.ListApplicationSummaries(r.Context(), userID)
 		if err != nil {
-			http.Error(w, "Failed to read applications directory: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "Failed to list applications: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-
-		summaries := make([]ApplicationSummary, 0)
-		for _, file := range files {
-			if file.IsDir() || !strings.HasSuffix(file.Name(), ".json") {
-				continue
-			}
-
-			filePath := filepath.Join(applicationsDir, file.Name())
-			content, err := ioutil.ReadFile(filePath)
-			if err != nil {
-				log.Printf("Error reading application file %s: %v", file.Name(), err)
-				continue
-			}
-
-			var app Application
-			if err := json.Unmarshal(content, &app); err != nil {
-				log.Printf("Error unmarshaling application file %s: %v", file.Name(), err)
-				continue
-			}
-			summaries = append(summaries, ApplicationSummary{
-				ID:                app.ID,
-				JobTitle:          app.JobTitle,
-				Company:           app.Company,
-				ApplicationStatus: app.ApplicationStatus,
-			})
-		}
-
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(summaries)
 
@@ -275,15 +267,15 @@ func handleApplications(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		app.ID = uuid.New().String()
-		if err := saveApplication(app); err != nil {
-			http.Error(w, "Failed to save application: "+err.Error(), http.StatusInternalServerError)
+		created, err := store.CreateApplication(r.Context(), userID, app)
+		if err != nil {
+			http.Error(w, "Failed to create application: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(app)
+		json.NewEncoder(w).Encode(created)
 
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -300,11 +292,17 @@ func handleApplicationByID(w http.ResponseWriter, r *http.Request) {
 	// Remove trailing slash if present
 	id = strings.TrimSuffix(id, "/")
 
+	userID, err := userIDFromRequest(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodGet:
-		app, err := getApplication(id)
+		app, err := store.GetApplication(r.Context(), userID, id)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, errNotFound) {
 				http.Error(w, "Application not found", http.StatusNotFound)
 			} else {
 				http.Error(w, "Failed to retrieve application: "+err.Error(), http.StatusInternalServerError)
@@ -326,35 +324,24 @@ func handleApplicationByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Check if the application exists before attempting to save
-		if _, err := getApplication(id); err != nil {
-			if os.IsNotExist(err) {
+		saved, err := store.UpdateApplication(r.Context(), userID, updatedApp)
+		if err != nil {
+			if errors.Is(err, errNotFound) || errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Application not found for update", http.StatusNotFound)
-			} else {
-				http.Error(w, "Failed to check existing application: "+err.Error(), http.StatusInternalServerError)
+				return
 			}
-			return
-		}
-
-		if err := saveApplication(updatedApp); err != nil {
 			http.Error(w, "Failed to update application: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(updatedApp)
+		json.NewEncoder(w).Encode(saved)
 
 	case http.MethodDelete:
-		// Verify it exists before delete to return proper status
-		if _, err := getApplication(id); err != nil {
-			if os.IsNotExist(err) {
+		if err := store.DeleteApplication(r.Context(), userID, id); err != nil {
+			if errors.Is(err, errNotFound) || errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Application not found", http.StatusNotFound)
-			} else {
-				http.Error(w, "Failed to check existing application: "+err.Error(), http.StatusInternalServerError)
+				return
 			}
-			return
-		}
-
-		if err := deleteApplication(id); err != nil {
 			http.Error(w, "Failed to delete application: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -363,42 +350,6 @@ func handleApplicationByID(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-// saveApplication saves an Application struct to a JSON file.
-func saveApplication(app Application) error {
-	filePath := filepath.Join(applicationsDir, app.ID+".json")
-	data, err := json.MarshalIndent(app, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal application: %w", err)
-	}
-	return ioutil.WriteFile(filePath, data, 0644)
-}
-
-// getApplication retrieves an Application struct from a JSON file.
-func getApplication(id string) (Application, error) {
-	filePath := filepath.Join(applicationsDir, id+".json")
-	content, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return Application{}, fmt.Errorf("failed to read application file: %w", err)
-	}
-	var app Application
-	if err := json.Unmarshal(content, &app); err != nil {
-		return Application{}, fmt.Errorf("failed to unmarshal application: %w", err)
-	}
-	return app, nil
-}
-
-// deleteApplication removes the JSON file for the given application ID.
-func deleteApplication(id string) error {
-	filePath := filepath.Join(applicationsDir, id+".json")
-	if err := os.Remove(filePath); err != nil {
-		if os.IsNotExist(err) {
-			return err
-		}
-		return fmt.Errorf("failed to delete application file: %w", err)
-	}
-	return nil
 }
 
 func normalizeOptimizedResume(res ResumeData, fallback ResumeData) ResumeData {
