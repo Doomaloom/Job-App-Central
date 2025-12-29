@@ -651,6 +651,10 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
     const [optimizingCover, setOptimizingCover] = useState(false);
     const [optCoverError, setOptCoverError] = useState(null);
     const [resumeEditorInitKey, setResumeEditorInitKey] = useState(0);
+    const [previewDoc, setPreviewDoc] = useState('resume'); // 'resume' | 'cover'
+    const [previewUrls, setPreviewUrls] = useState({ resume: null, cover: null });
+    const [previewLoading, setPreviewLoading] = useState(false);
+    const [previewError, setPreviewError] = useState(null);
 
     useEffect(() => {
         const fetchApplicationDetail = async () => {
@@ -683,6 +687,17 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
             setApplication((prev) => ({ ...prev, resume: mergeProfileHeader(prev.resume, profileHeader) }));
         }
     }, [profileHeader]);
+
+    useEffect(() => {
+        return () => {
+            setPreviewUrls((prev) => {
+                if (prev?.resume) URL.revokeObjectURL(prev.resume);
+                if (prev?.cover) URL.revokeObjectURL(prev.cover);
+                return { resume: null, cover: null };
+            });
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleSaveApplication = async (updatedApp) => {
         try {
@@ -747,6 +762,51 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
         } catch (e) {
             console.error("Failed to generate PDF:", e);
             alert('Failed to generate PDF: ' + e.message);
+        }
+    };
+
+    const handleRefreshPreview = async (doc = previewDoc) => {
+        if (!application) return;
+        setPreviewError(null);
+        setPreviewLoading(true);
+        try {
+            const resumeWithHeader = mergeProfileHeader(application.resume, profileHeader);
+            const normalizedApp = normalizeApplicationForBackend({ ...application, resume: resumeWithHeader });
+            const appForPdf = {
+                ...normalizedApp,
+                resume: stripEditorIds(normalizedApp.resume),
+            };
+
+            const response = await authedFetch(`/api/preview-pdf?doc=${encodeURIComponent(doc)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(appForPdf),
+            });
+            if (!response.ok) {
+                const text = await response.text().catch(() => '');
+                throw new Error(text || `HTTP error! status: ${response.status}`);
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            setPreviewUrls((prev) => {
+                const next = { ...(prev || { resume: null, cover: null }), [doc]: url };
+                const old = prev?.[doc];
+                if (old) URL.revokeObjectURL(old);
+                return next;
+            });
+        } catch (e) {
+            console.error('Failed to generate preview', e);
+            setPreviewError(e);
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
+
+    const handleSelectPreviewDoc = (doc) => {
+        setPreviewDoc(doc);
+        const existing = previewUrls?.[doc];
+        if (!existing) {
+            handleRefreshPreview(doc);
         }
     };
 
@@ -866,6 +926,12 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                 >
                     Cover Letter
                 </button>
+                <button
+                    onClick={() => setActiveTab('preview')}
+                    style={{ padding: '10px 20px', border: 'none', borderBottom: activeTab === 'preview' ? '2px solid blue' : 'none', backgroundColor: 'transparent', cursor: 'pointer' }}
+                >
+                    Preview
+                </button>
             </div>
 
             {/* Tab Content */}
@@ -919,6 +985,54 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                             coverLetter={application?.coverLetter || defaultCoverLetter()}
                             onChange={handleCoverLetterChange}
                         />
+                    </div>
+                )}
+                {activeTab === 'preview' && (
+                    <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    type="button"
+                                    className={previewDoc === 'resume' ? 'btn btn--primary' : 'btn'}
+                                    onClick={() => handleSelectPreviewDoc('resume')}
+                                >
+                                    Resume
+                                </button>
+                                <button
+                                    type="button"
+                                    className={previewDoc === 'cover' ? 'btn btn--primary' : 'btn'}
+                                    onClick={() => handleSelectPreviewDoc('cover')}
+                                >
+                                    Cover Letter
+                                </button>
+                            </div>
+                            <button
+                                type="button"
+                                className="btn btn--add"
+                                disabled={previewLoading}
+                                onClick={() => handleRefreshPreview(previewDoc)}
+                            >
+                                {previewLoading ? 'Generating…' : 'Refresh Preview'}
+                            </button>
+                        </div>
+
+                        {previewError && (
+                            <div className="panel panel--padded" style={{ borderColor: '#dc3545', background: '#fff5f5', color: '#8a1f2b' }}>
+                                Failed to generate preview: {previewError.message}
+                            </div>
+                        )}
+
+                        {previewUrls?.[previewDoc] ? (
+                            <iframe
+                                title={`PDF Preview (${previewDoc})`}
+                                src={previewUrls[previewDoc]}
+                                style={{ width: '100%', height: '78vh', border: '1px solid #ddd', borderRadius: '10px', background: '#fff' }}
+                            />
+                        ) : (
+                            <div className="panel panel--padded" style={{ color: '#555' }}>
+                                Press “Refresh Preview” to generate a PDF preview.
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

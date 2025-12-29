@@ -155,6 +155,7 @@ func main() {
 
 	mux.HandleFunc("/api/profile", requireAuth(verifier, handleProfile))
 	mux.HandleFunc("/api/generate-pdf", requireAuth(verifier, handleGeneratePDF))
+	mux.HandleFunc("/api/preview-pdf", requireAuth(verifier, handlePreviewPDF))
 	mux.HandleFunc("/api/applications", requireAuth(verifier, handleApplications))
 	mux.HandleFunc("/api/applications/", requireAuth(verifier, handleApplicationByID)) // For GET, PUT, DELETE by ID
 	mux.HandleFunc("/api/optimize-resume", requireAuth(verifier, handleOptimizeResume))
