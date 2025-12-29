@@ -303,6 +303,13 @@ function App() {
     const [error, setError] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
     const [session, setSession] = useState(null);
+    const [geminiApiKey, setGeminiApiKey] = useState(() => {
+        try {
+            return localStorage.getItem('jobapp_gemini_api_key') || '';
+        } catch {
+            return '';
+        }
+    });
     const [profile, setProfile] = useState(() => {
         try {
             const stored = localStorage.getItem('jobapp_profile');
@@ -343,9 +350,15 @@ function App() {
             const token = session?.access_token;
             const headers = new Headers(options.headers || {});
             if (token) headers.set('Authorization', `Bearer ${token}`);
+            const shouldSendGeminiKey =
+                typeof url === 'string' &&
+                (url.startsWith('/api/optimize-') || url.startsWith('/api/github-projects'));
+            if (shouldSendGeminiKey && geminiApiKey) {
+                headers.set('X-Gemini-Api-Key', geminiApiKey);
+            }
             return fetch(url, { ...options, headers });
         },
-        [session?.access_token],
+        [session?.access_token, geminiApiKey],
     );
 
     const signInWithGoogle = async () => {
@@ -479,6 +492,20 @@ function App() {
         }
     };
 
+    const handleSaveGeminiApiKey = (nextKey) => {
+        const trimmed = (nextKey || '').trim();
+        setGeminiApiKey(trimmed);
+        try {
+            if (trimmed) {
+                localStorage.setItem('jobapp_gemini_api_key', trimmed);
+            } else {
+                localStorage.removeItem('jobapp_gemini_api_key');
+            }
+        } catch (e) {
+            console.warn('Could not persist gemini api key', e);
+        }
+    };
+
     const handleDeleteApplication = async (appId) => {
         const confirmed = window.confirm('Are you sure you want to delete this application? This cannot be undone.');
         if (!confirmed) return;
@@ -599,6 +626,8 @@ function App() {
                                 profile={profile}
                                 onUpdate={handleProfileUpdate}
                                 onFetchGithubProjects={fetchGithubProjects}
+                                geminiApiKey={geminiApiKey}
+                                onSaveGeminiApiKey={handleSaveGeminiApiKey}
                                 defaultProfile={defaultProfile}
                                 defaultCandidate={defaultCandidate}
                                 hydrateCandidateForEditor={hydrateCandidateForEditor}

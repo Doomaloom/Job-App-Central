@@ -32,7 +32,7 @@ func newGitHubClient() *github.Client {
 	return github.NewClient(nil)
 }
 
-func getReposJson(ctx context.Context, username string, includeAIErrors bool) []ProjectCard {
+func getReposJson(ctx context.Context, geminiAPIKey string, username string, includeAIErrors bool) []ProjectCard {
 	username = strings.TrimSpace(username)
 	if username == "" {
 		return []ProjectCard{}
@@ -66,7 +66,7 @@ func getReposJson(ctx context.Context, username string, includeAIErrors bool) []
 		}
 
 		// make project points with ai
-		if points, err := consultAI(ctx, cards[i]); err == nil {
+		if points, err := consultAI(ctx, geminiAPIKey, cards[i]); err == nil {
 			if len(points) > 0 {
 				cards[i].Points = points
 			}
@@ -210,9 +210,9 @@ func getTreePaths(ctx context.Context, client *github.Client, owner, repo, branc
 	return paths, nil
 }
 
-func consultAI(ctx context.Context, project ProjectCard) ([]string, error) {
-	if strings.TrimSpace(os.Getenv("GEMINI_API_KEY")) == "" {
-		return nil, fmt.Errorf("GEMINI_API_KEY not set")
+func consultAI(ctx context.Context, apiKey string, project ProjectCard) ([]string, error) {
+	if strings.TrimSpace(apiKey) == "" {
+		return nil, fmt.Errorf("gemini api key not provided")
 	}
 	model := strings.TrimSpace(os.Getenv("GEMINI_MODEL"))
 	if model == "" {
@@ -221,7 +221,7 @@ func consultAI(ctx context.Context, project ProjectCard) ([]string, error) {
 
 	prompt := buildProjectPointsPrompt(project)
 
-	client, err := genai.NewClient(ctx, nil)
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{APIKey: apiKey})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gemini client: %w", err)
 	}

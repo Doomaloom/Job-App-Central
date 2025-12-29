@@ -38,7 +38,7 @@ Set these in the shell where you run the backend:
 - `DATABASE_URL` (required; Supabase Postgres connection string)
 - `SUPABASE_URL` (required; e.g. `https://<project-ref>.supabase.co`)
 - `SUPABASE_ANON_KEY` (required; same value as your Supabase “publishable/anon” key, used to fetch JWKS)
-- `GEMINI_API_KEY` (required for AI features)
+- `GEMINI_API_KEY` (optional if users provide their own key; required if you want server-side key for everyone)
 - `GEMINI_MODEL` (optional)
 
 Set these for the frontend (Vite):

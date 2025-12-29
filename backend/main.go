@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -173,9 +172,9 @@ func handleOptimizeResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey := os.Getenv("GEMINI_API_KEY")
-	if apiKey == "" {
-		http.Error(w, "GEMINI_API_KEY not set on server", http.StatusInternalServerError)
+	apiKey, err := geminiAPIKeyRequired(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -185,7 +184,7 @@ func handleOptimizeResume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	optimized, err := optimizeResumeWithAI(r.Context(), req)
+	optimized, err := optimizeResumeWithAI(r.Context(), apiKey, req)
 	if err != nil {
 		http.Error(w, "Failed to optimize resume: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -201,9 +200,9 @@ func handleOptimizeCoverLetter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey := os.Getenv("GEMINI_API_KEY")
-	if apiKey == "" {
-		http.Error(w, "GEMINI_API_KEY not set on server", http.StatusInternalServerError)
+	apiKey, err := geminiAPIKeyRequired(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -213,7 +212,7 @@ func handleOptimizeCoverLetter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	optimized, err := optimizeCoverLetterWithAI(r.Context(), req)
+	optimized, err := optimizeCoverLetterWithAI(r.Context(), apiKey, req)
 	if err != nil {
 		http.Error(w, "Failed to optimize cover letter: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -236,8 +235,9 @@ func handleGithubProjects(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	apiKey := geminiAPIKeyOptional(r)
 	includeAIErrors := r.URL.Query().Get("debugAI") == "1"
-	cards := getReposJson(r.Context(), username, includeAIErrors)
+	cards := getReposJson(r.Context(), apiKey, username, includeAIErrors)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cards)
 }

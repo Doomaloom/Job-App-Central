@@ -123,7 +123,7 @@ function ChipsEditor({ value, onChange, placeholder = 'Add an item…', addLabel
     );
 }
 
-function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile, defaultCandidate, hydrateCandidateForEditor }) {
+function ProfilePage({ profile, onUpdate, onFetchGithubProjects, geminiApiKey, onSaveGeminiApiKey, defaultProfile, defaultCandidate, hydrateCandidateForEditor }) {
     const [localProfile, setLocalProfile] = useState(() => {
         const baseProfile = typeof defaultProfile === 'function' ? defaultProfile() : {};
         const baseCandidate = typeof defaultCandidate === 'function' ? defaultCandidate() : {};
@@ -135,6 +135,8 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
         };
     });
     const [githubProjectsLoading, setGithubProjectsLoading] = useState(false);
+    const [localGeminiKey, setLocalGeminiKey] = useState(geminiApiKey || '');
+    const [showGeminiKey, setShowGeminiKey] = useState(false);
 
     useEffect(() => {
         const baseProfile = typeof defaultProfile === 'function' ? defaultProfile() : {};
@@ -146,6 +148,10 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
             candidate: hydrateCandidateForEditor ? hydrateCandidateForEditor(candidate) : candidate,
         });
     }, [profile, defaultProfile, defaultCandidate, hydrateCandidateForEditor]);
+
+    useEffect(() => {
+        setLocalGeminiKey(geminiApiKey || '');
+    }, [geminiApiKey]);
 
     const updateCandidate = (updater) => {
         setLocalProfile((prev) => {
@@ -235,6 +241,41 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, defaultProfile,
             <h2>Your Profile</h2>
             <p style={{ color: '#555', marginBottom: '20px' }}>Update your contact information and profile details, then press Save.</p>
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <SectionCard title="AI (Bring Your Own Key)">
+                    <p style={{ marginTop: 0, color: '#555' }}>
+                        Your Gemini key is stored only in this browser and sent to the backend only for AI actions.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '10px', alignItems: 'end' }}>
+                        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <span style={{ fontWeight: 600 }}>Gemini API Key</span>
+                            <input
+                                type={showGeminiKey ? 'text' : 'password'}
+                                value={localGeminiKey}
+                                onChange={(e) => setLocalGeminiKey(e.target.value)}
+                                placeholder="AIza... / your Gemini API key"
+                                autoComplete="off"
+                                className="input"
+                            />
+                        </label>
+                        <button
+                            type="button"
+                            className="btn"
+                            onClick={() => setShowGeminiKey((v) => !v)}
+                            style={{ height: '40px' }}
+                        >
+                            {showGeminiKey ? 'Hide' : 'Show'}
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn--add"
+                            onClick={() => onSaveGeminiApiKey && onSaveGeminiApiKey(localGeminiKey)}
+                            style={{ height: '40px' }}
+                        >
+                            Save Key
+                        </button>
+                    </div>
+                </SectionCard>
+
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontWeight: 600 }}>Full Name</span>
                     <input type="text" name="name" value={localProfile.name} onChange={handleChange} required className="input" />

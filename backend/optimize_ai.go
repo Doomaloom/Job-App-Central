@@ -12,7 +12,7 @@ import (
 )
 
 // optimizeResumeWithAI calls Google Gemini to improve the resume content.
-func optimizeResumeWithAI(parentCtx context.Context, req optimizeRequest) (ResumeData, error) {
+func optimizeResumeWithAI(parentCtx context.Context, apiKey string, req optimizeRequest) (ResumeData, error) {
 	userResume, _ := json.Marshal(req.Resume)
 	model := os.Getenv("GEMINI_MODEL")
 	if model == "" {
@@ -34,7 +34,7 @@ Rules:
 	ctx, cancel := context.WithTimeout(parentCtx, 120*time.Second)
 	defer cancel()
 
-	client, err := genai.NewClient(ctx, nil)
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{APIKey: apiKey})
 	if err != nil {
 		return ResumeData{}, fmt.Errorf("failed to create gemini client: %w", err)
 	}
@@ -72,7 +72,7 @@ Rules:
 	return normalized, nil
 }
 
-func optimizeCoverLetterWithAI(parentCtx context.Context, req optimizeCoverLetterRequest) (CoverLetter, error) {
+func optimizeCoverLetterWithAI(parentCtx context.Context, apiKey string, req optimizeCoverLetterRequest) (CoverLetter, error) {
 	model := os.Getenv("GEMINI_MODEL")
 	if model == "" {
 		model = "gemini-3-pro-preview"
@@ -102,7 +102,7 @@ Rules:
 	ctx, cancel := context.WithTimeout(parentCtx, 120*time.Second)
 	defer cancel()
 
-	client, err := genai.NewClient(ctx, nil)
+	client, err := genai.NewClient(ctx, &genai.ClientConfig{APIKey: apiKey})
 	if err != nil {
 		return CoverLetter{}, fmt.Errorf("failed to create gemini client: %w", err)
 	}
