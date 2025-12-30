@@ -232,7 +232,7 @@ func consultAI(ctx context.Context, apiKey string, project ProjectCard) ([]strin
 		genai.Text(prompt),
 		&genai.GenerateContentConfig{
 			Temperature:      genai.Ptr[float32](0.2),
-			MaxOutputTokens:  int32(512),
+			MaxOutputTokens:  1024,
 			ResponseMIMEType: "text/plain",
 		},
 	)
@@ -259,7 +259,7 @@ func consultAI(ctx context.Context, apiKey string, project ProjectCard) ([]strin
 
 func buildProjectPointsPrompt(project ProjectCard) string {
 	readme := strings.TrimSpace(project.Readme)
-	readme = truncateString(readme, 2000)
+	readme = truncateString(readme, 4000)
 
 	langs := make([]string, 0, len(project.Languages))
 	for k := range project.Languages {
@@ -268,19 +268,57 @@ func buildProjectPointsPrompt(project ProjectCard) string {
 	sort.Strings(langs)
 
 	return fmt.Sprintf(
-		`You are helping generate neutral, general project description points for a resume.
+		`You are an expert resume writer specializing in technical projects.
 
-Return 1-5 detailed points separated by a single " | " character (one line, no bullets).
-Example: "Built X ... | Implemented Y ... | Designed Z ... | Deployed ..."
-Each point should be general and descriptive about what the project does and skills it demonstrates.
-Do NOT include metrics, numbers, or claims you cannot infer. Do NOT mention "README" or "GitHub".
+		Your task is to generate resume-ready project bullet points based ONLY on the provided repository information.
 
-Repo title: %q
-Full name: %q
-Languages: %s
+		OUTPUT FORMAT (STRICT):
+		- Return 1–5 concise, high-quality bullet points
+		- Output MUST be a single line
+		- Separate points using exactly: " | "
+		- Do NOT use markdown, bullets, or line breaks
 
-README (truncated):
-%s`,
+		CONTENT REQUIREMENTS:
+		- Each point must describe what the project does and what skills it demonstrates
+		- Focus on implementation, design decisions, and technical concepts
+		- Emphasize systems, tools, abstractions, or workflows where applicable
+		- Use professional resume language (e.g., "Built", "Implemented", "Designed", "Developed")
+
+		HALLUCINATION & SAFETY RULES (DO NOT VIOLATE):
+		- Do NOT invent features, technologies, or functionality not clearly supported
+		- Do NOT include metrics, performance claims, or scale unless explicitly stated
+		- Do NOT assume deployment, users, production usage, or real-world impact unless stated
+		- If information is missing, keep descriptions high-level and neutral
+
+		STYLE CONSTRAINTS:
+		- Do NOT mention "README", "GitHub", "repository", or "repo"
+		- Do NOT reference learning, coursework, or tutorials
+		- Avoid vague phrases (e.g., "worked on", "helped with", "various features")
+		- Avoid marketing language or hype
+		- Avoid repeating the same verb across all points when possible
+
+		LANGUAGE & TECH USAGE:
+		- Use the provided languages and tools ONLY if relevant to the described functionality
+		- Prefer describing how technologies are used rather than listing them
+		- If the project is small or unclear, generate fewer but stronger points (1–2 is acceptable)
+
+		INPUTS:
+
+		Repo title:
+		%q
+
+		Full name:
+		%q
+
+		Languages:
+		%s
+
+		README (truncated):
+		%s
+
+		OUTPUT:
+		Return ONLY the formatted bullet points line.
+		`,
 		project.Title,
 		project.FullName,
 		strings.Join(langs, ", "),

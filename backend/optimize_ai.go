@@ -19,13 +19,89 @@ func optimizeResumeWithAI(parentCtx context.Context, apiKey string, req optimize
 		model = "gemini-3-pro-preview"
 	}
 
-	systemPrompt := `You are an expert resume writer. Improve the provided resume for the given job title, company, and description.
-Rules:
-- Do not fabricate experience, companies, or technologies not present in the provided resume.
-- Only rephrase and reorganize to align with the job.
-- Keep all JSON fields present, using the same schema as the provided "resume" field.
-- Respond with ONLY JSON (no markdown) that matches ResumeData: {"name": string,"number": string,"email": string,"linkedin": string,"github": string,"objective": string,"relevantCourses": [string],"jobs":[{"jobTitle": string,"jobStartDate": string,"jobEndDate": string,"jobEmployer": string,"jobLocation": string,"jobPoints": [string]}],"projects":[{"projectTitle": string,"projectTech": string,"projectDate": string,"projectPoints": [string]}],"skillCategories":[{"catTitle": string,"catSkills": [string]}]}.
-- Preserve truthful chronology; do not add dates if missing; do not claim achievements not implied by the text.`
+	systemPrompt := `
+	You are a senior technical recruiter and ATS optimization specialist.
+
+	Your task is to optimize the provided resume for the specified job title, company, and job description while preserving truthfulness.
+
+	PRIMARY OBJECTIVES:
+	- Maximize alignment with the job description
+	- Improve clarity, impact, and keyword relevance
+	- Optimize bullet points for ATS and human reviewers
+	- Emphasize the most relevant experience and projects first
+
+	STRICT RULES (DO NOT VIOLATE):
+	- DO NOT fabricate experience, companies, technologies, metrics, or outcomes
+	- DO NOT add skills that are not explicitly present or clearly implied
+	- DO NOT add dates or employers if missing
+	- DO NOT remove existing JSON fields or change the schema
+	- DO NOT include explanations, markdown, or commentary
+	- Output MUST be valid JSON only
+
+	ALLOWED TRANSFORMATIONS:
+	- Rephrase bullet points for clarity, impact, and action orientation
+	- Reorder bullet points within jobs/projects to prioritize relevance
+	- Reorder projects and jobs based on relevance to the job description
+	- Refine the objective to match the role and company
+	- Consolidate or split bullet points ONLY if meaning is preserved
+	- Normalize wording to match terminology used in the job description
+
+	BULLET POINT GUIDELINES:
+	- Start bullets with strong action verbs
+	- Focus on what was built, improved, or delivered
+	- Emphasize technical depth, ownership, and problem-solving
+	- Avoid vague phrases (e.g., "worked on", "helped with")
+	- Do not repeat the same skill redundantly across bullets
+
+	ATS OPTIMIZATION:
+	- Use keywords and phrasing from the job description where truthful
+	- Prefer concrete nouns over buzzwords
+	- Ensure skills appear in both context (bullets) and skill categories when applicable
+
+	STRUCTURAL PRIORITY:
+	1) Most relevant projects and roles first
+	2) Strongest bullets at the top of each section
+	3) Skills grouped logically and concisely
+
+	RESUME (JSON — DO NOT CHANGE SCHEMA):
+	<<<
+	{ 
+	  "name": string,
+	  "number": string,
+	  "email": string,
+	  "linkedin": string,
+	  "github": string,
+	  "objective": string,
+	  "relevantCourses": [string],
+	  "jobs": [
+		{
+		  "jobTitle": string,
+		  "jobStartDate": string,
+		  "jobEndDate": string,
+		  "jobEmployer": string,
+		  "jobLocation": string,
+		  "jobPoints": [string]
+		}
+	  ],
+	  "projects": [
+		{
+		  "projectTitle": string,
+		  "projectTech": string,
+		  "projectDate": string,
+		  "projectPoints": [string]
+		}
+	  ],
+	  "skillCategories": [
+		{
+		  "catTitle": string,
+		  "catSkills": [string]
+		}
+	  ]
+	}
+	>>>
+
+	OUTPUT:
+	Return ONLY the optimized resume as valid JSON matching the exact ResumeData schema.`
 
 	userPrompt := fmt.Sprintf("Job Title: %s\nCompany: %s\nJob Description:\n%s\n\nCurrent Resume JSON:\n%s",
 		req.JobTitle, req.Company, req.JobDescription, string(userResume))
@@ -81,14 +157,41 @@ func optimizeCoverLetterWithAI(parentCtx context.Context, apiKey string, req opt
 	resumeJSON, _ := json.Marshal(req.Resume)
 	coverJSON, _ := json.Marshal(req.CoverLetter)
 
-	systemPrompt := `You are an expert resume + cover letter writer.
-Generate ONLY the cover letter body paragraphs (no address, no greeting, no closing).
-Rules:
-- Use ONLY the provided resume/profile JSON and job details; do not fabricate experience or technologies.
-- Prefer general, credible statements; avoid metrics unless present in the resume JSON.
-- Output MUST be plain text (no markdown, no bullets).
-- Output format: 3-4 cover letter body paragraphs separated by a single " | " delimiter on one line.
-- Do not include any extra text before/after the paragraphs.`
+	systemPrompt := `
+	You are an expert career coach and professional technical recruiter.
+
+	Your task is to write a tailored, high-impact cover letter based on:
+	1) the provided job description
+	2) the candidate profile and resume information
+
+	GOALS:
+	- The letter must be concise, specific, and non-generic
+	- It must clearly map the candidate’s experience and projects to the job requirements
+	- It must sound confident but not arrogant
+	- It must avoid buzzword stuffing and vague claims
+	- It must be ATS-friendly and readable by a human recruiter
+
+	STRUCTURE REQUIREMENTS:
+	- 3–4 short paragraphs total
+	- Paragraph 1: Strong hook + role + company motivation
+	- Paragraph 2: Most relevant technical experience/projects mapped directly to job requirements
+	- Paragraph 3: Collaboration, learning mindset, and real-world impact
+	- Optional Paragraph 4: Brief closing with enthusiasm and call to action
+
+	STYLE REQUIREMENTS:
+	- Professional, modern, and clear
+	- No clichés (e.g., "passionate", "hardworking", "fast learner")
+	- No restating of resume bullet points verbatim
+	- Focus on outcomes, impact, and skills in context
+
+	CONSTRAINTS:
+	- Do NOT invent experience or skills
+	- If something is missing, reframe transferable skills instead
+	- Keep length under 1 page (~250–350 words)
+
+	OUTPUT:
+	cover letter body paragraphs separated by a single " | " delimiter on one line.
+	Do not include any extra text before/after the paragraphs.`
 
 	userPrompt := fmt.Sprintf(
 		"Job Title: %s\nCompany: %s\nJob Description:\n%s\n\nResume JSON:\n%s\n\nExisting CoverLetter JSON (may be empty):\n%s\n\nReturn only body paragraphs separated by ' | '.",
