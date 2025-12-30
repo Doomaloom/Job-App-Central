@@ -1,0 +1,16 @@
+.git
+.DS_Store
+
+**/node_modules
+**/dist
+**/dist-ssr
+
+.gocache
+backend/.gocache
+backend/.gomodcache
+backend/.gopath
+
+frontend/.env*
+backend/.env*
+.env*
+

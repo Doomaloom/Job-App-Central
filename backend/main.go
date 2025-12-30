@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -162,8 +163,12 @@ func main() {
 	mux.HandleFunc("/api/optimize-coverletter", requireAuth(verifier, handleOptimizeCoverLetter))
 	mux.HandleFunc("/api/github-projects", requireAuth(verifier, handleGithubProjects))
 
-	fmt.Println("Server starting on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	port := strings.TrimSpace(os.Getenv("PORT"))
+	if port == "" {
+		port = "8080"
+	}
+	fmt.Println("Server starting on port " + port + "...")
+	log.Fatal(http.ListenAndServe(":"+port, mux))
 }
 
 // handleOptimizeResume calls OpenAI to optimize the resume based on job details.
