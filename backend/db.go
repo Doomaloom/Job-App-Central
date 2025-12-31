@@ -15,6 +15,12 @@ type dbStore struct {
 	pool *pgxpool.Pool
 }
 
+func envBool(name string) bool {
+	v := strings.TrimSpace(os.Getenv(name))
+	v = strings.ToLower(v)
+	return v == "1" || v == "true" || v == "yes" || v == "on"
+}
+
 func newDBStore(ctx context.Context) (*dbStore, error) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
@@ -30,35 +36,38 @@ func newDBStore(ctx context.Context) (*dbStore, error) {
 	cfg.MaxConnLifetime = 30 * time.Minute
 	cfg.MaxConnIdleTime = 5 * time.Minute
 
-	// Some hosts/environments (including certain container networks) don't have IPv6 egress.
-	// Supabase DNS can return AAAA records; force IPv4 to avoid "network is unreachable" on IPv6 dial.
-	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
-	cfg.ConnConfig.LookupFunc = func(ctx context.Context, host string) ([]string, error) {
-		host = strings.TrimSpace(host)
-		if ip := net.ParseIP(host); ip != nil {
-			if ip4 := ip.To4(); ip4 != nil {
-				return []string{ip4.String()}, nil
+	// Some hosts/environments (e.g. Railway/Render) don't have IPv6 egress.
+	// Supabase free-tier direct DB hostname may be IPv6-only, so optionally force IPv4 resolution/dialing.
+	// On Fly.io (IPv6-capable), leave this disabled.
+	if envBool("DB_FORCE_IPV4") {
+		dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+		cfg.ConnConfig.LookupFunc = func(ctx context.Context, host string) ([]string, error) {
+			host = strings.TrimSpace(host)
+			if ip := net.ParseIP(host); ip != nil {
+				if ip4 := ip.To4(); ip4 != nil {
+					return []string{ip4.String()}, nil
+				}
+				return nil, fmt.Errorf("ipv6 is not supported in this runtime (host=%s)", host)
 			}
-			return nil, fmt.Errorf("ipv6 is not supported in this runtime (host=%s)", host)
-		}
 
-		ips, err := net.DefaultResolver.LookupIP(ctx, "ip4", host)
-		if err != nil {
-			return nil, err
-		}
-		out := make([]string, 0, len(ips))
-		for _, ip := range ips {
-			if ip4 := ip.To4(); ip4 != nil {
-				out = append(out, ip4.String())
+			ips, err := net.DefaultResolver.LookupIP(ctx, "ip4", host)
+			if err != nil {
+				return nil, err
 			}
+			out := make([]string, 0, len(ips))
+			for _, ip := range ips {
+				if ip4 := ip.To4(); ip4 != nil {
+					out = append(out, ip4.String())
+				}
+			}
+			if len(out) == 0 {
+				return nil, fmt.Errorf("no ipv4 addresses found for host=%s", host)
+			}
+			return out, nil
 		}
-		if len(out) == 0 {
-			return nil, fmt.Errorf("no ipv4 addresses found for host=%s", host)
+		cfg.ConnConfig.DialFunc = func(ctx context.Context, _ string, addr string) (net.Conn, error) {
+			return dialer.DialContext(ctx, "tcp4", addr)
 		}
-		return out, nil
-	}
-	cfg.ConnConfig.DialFunc = func(ctx context.Context, _ string, addr string) (net.Conn, error) {
-		return dialer.DialContext(ctx, "tcp4", addr)
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
