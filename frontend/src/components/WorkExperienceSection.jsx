@@ -3,6 +3,12 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import SortableItem from './SortableItem';
 import EditJobForm from './EditJobForm';
 
+const normalizePoints = (value) => {
+    if (Array.isArray(value)) return value.filter(Boolean).map((v) => String(v).trim()).filter(Boolean);
+    if (typeof value !== 'string') return [];
+    return value.split('\n').map((v) => v.trim()).filter(Boolean);
+};
+
 function WorkExperienceSection({
     jobs,
     onUpdateJob,
@@ -17,6 +23,7 @@ function WorkExperienceSection({
     dangerButtonStyle,
 }) {
     const [editingJobId, setEditingJobId] = useState(null);
+    const [expandedJobs, setExpandedJobs] = useState(() => new Set());
 
     const handleSaveJob = (updatedJob) => {
         onUpdateJob(updatedJob);
@@ -69,12 +76,57 @@ function WorkExperienceSection({
                                 onCancel={handleCancelEdit}
                             />
                         ) : (
-                            <div>
-                                <h4>{job.jobTitle} at {job.jobEmployer}</h4>
-                                <div style={{ marginTop: '10px' }}>
-                                    <button type="button" onClick={() => setEditingJobId(job.id)} className="btn">Edit</button>
-                                    <button type="button" onClick={() => onRemoveJob(job.id)} className="btn btn--danger" style={{ marginLeft: '10px' }}>Remove</button>
+                            <div className="panel panel--padded">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start' }}>
+                                    <div style={{ flexGrow: 1 }}>
+                                        <div style={{ fontWeight: 700 }}>
+                                            {job.jobTitle || 'Untitled Role'}
+                                            {job.jobEmployer ? ` — ${job.jobEmployer}` : ''}
+                                        </div>
+                                        <div className="muted" style={{ fontSize: '0.9em', marginTop: '2px' }}>
+                                            {[job.jobLocation, [job.jobStartDate, job.jobEndDate].filter(Boolean).join(' – ')].filter(Boolean).join(' • ')}
+                                        </div>
+                                    </div>
+                                    <div className="btnRow" style={{ justifyContent: 'flex-end' }}>
+                                        <button type="button" onClick={() => setEditingJobId(job.id)} className="btn btn--sm">Edit</button>
+                                        <button type="button" onClick={() => onRemoveJob(job.id)} className="btn btn--danger btn--sm">Remove</button>
+                                    </div>
                                 </div>
+
+                                {(() => {
+                                    const points = normalizePoints(job.jobPoints);
+                                    if (points.length === 0) return <div className="muted" style={{ marginTop: '10px' }}>No points yet.</div>;
+                                    const expanded = expandedJobs.has(job.id);
+                                    const maxVisible = 4;
+                                    const visible = expanded ? points : points.slice(0, maxVisible);
+                                    const hiddenCount = points.length - visible.length;
+                                    return (
+                                        <div style={{ marginTop: '10px' }}>
+                                            <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                {visible.map((p, idx) => (
+                                                    <li key={`${job.id}-pt-${idx}`} style={{ color: '#333' }}>{p}</li>
+                                                ))}
+                                            </ul>
+                                            {hiddenCount > 0 && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn--sm"
+                                                    style={{ marginTop: '8px' }}
+                                                    onClick={() => {
+                                                        setExpandedJobs((prev) => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(job.id)) next.delete(job.id);
+                                                            else next.add(job.id);
+                                                            return next;
+                                                        });
+                                                    }}
+                                                >
+                                                    {expanded ? 'Show less' : `Show ${hiddenCount} more`}
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         )}
                     </SortableItem>

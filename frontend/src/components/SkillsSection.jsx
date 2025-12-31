@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import EditSkillCategoryForm from './EditSkillCategoryForm';
 
+const normalizeSkills = (value) => {
+    if (Array.isArray(value)) return value.filter(Boolean).map((v) => String(v).trim()).filter(Boolean);
+    if (typeof value !== 'string') return [];
+    return value.split(',').map((v) => v.trim()).filter(Boolean);
+};
+
 function SkillsSection({
     skillCategories,
     onUpdateSkillCategory,
@@ -15,6 +21,7 @@ function SkillsSection({
     dangerButtonStyle,
 }) {
     const [editingSkillCatId, setEditingSkillCatId] = useState(null);
+    const [expandedCats, setExpandedCats] = useState(() => new Set());
 
     const handleSaveSkillCategory = (updatedSkillCat) => {
         onUpdateSkillCategory(updatedSkillCat);
@@ -59,7 +66,7 @@ function SkillsSection({
             <button type="button" onClick={onAddSkillCategory} className="btn btn--add" style={{ marginBottom: '10px' }}>Add New Skill Category</button>
             <div>
                 {(skillCategories || []).map(skillCat => (
-                    <div key={skillCat.id} style={{ padding: '10px', border: '1px solid #ccc', marginBottom: '10px', backgroundColor: 'white' }}>
+                    <div key={skillCat.id} className="panel panel--padded" style={{ marginBottom: '10px' }}>
                         {editingSkillCatId === skillCat.id ? (
                             <EditSkillCategoryForm
                                 skillCategory={skillCat}
@@ -68,25 +75,50 @@ function SkillsSection({
                             />
                         ) : (
                             <div>
-                                <h4>{skillCat.catTitle}</h4>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                    {(Array.isArray(skillCat.catSkills)
-                                        ? skillCat.catSkills
-                                        : (skillCat.catSkills || '')
-                                            .split(',')
-                                            .map((s) => s.trim())
-                                            .filter(Boolean)
-                                    ).map((skill) => (
-                                        <span key={skill} style={{ padding: '6px 10px', borderRadius: '999px', backgroundColor: '#e7f1ff', fontSize: '0.9em' }}>
-                                            {skill}
-                                        </span>
-                                    ))}
-                                    {!skillCat.catSkills && <span style={{ color: '#777' }}>No skills listed.</span>}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', alignItems: 'flex-start' }}>
+                                    <div style={{ fontWeight: 700 }}>{skillCat.catTitle || 'Skills'}</div>
+                                    <div className="btnRow" style={{ justifyContent: 'flex-end' }}>
+                                        <button type="button" onClick={() => setEditingSkillCatId(skillCat.id)} className="btn btn--sm">Edit</button>
+                                        <button type="button" onClick={() => onRemoveSkillCategory(skillCat.id)} className="btn btn--danger btn--sm">Remove</button>
+                                    </div>
                                 </div>
-                                <div style={{ marginTop: '10px' }}>
-                                    <button type="button" onClick={() => setEditingSkillCatId(skillCat.id)} className="btn">Edit</button>
-                                    <button type="button" onClick={() => onRemoveSkillCategory(skillCat.id)} className="btn btn--danger" style={{ marginLeft: '10px' }}>Remove</button>
-                                </div>
+
+                                {(() => {
+                                    const skills = normalizeSkills(skillCat.catSkills);
+                                    if (skills.length === 0) return <div className="muted" style={{ marginTop: '10px' }}>No skills listed.</div>;
+                                    const expanded = expandedCats.has(skillCat.id);
+                                    const maxVisible = 12;
+                                    const visible = expanded ? skills : skills.slice(0, maxVisible);
+                                    const hiddenCount = skills.length - visible.length;
+                                    return (
+                                        <div style={{ marginTop: '10px' }}>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                {visible.map((skill) => (
+                                                    <span key={`${skillCat.id}-${skill}`} style={{ padding: '6px 10px', borderRadius: '999px', backgroundColor: '#e7f1ff', fontSize: '0.9em' }}>
+                                                        {skill}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            {hiddenCount > 0 && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn--sm"
+                                                    style={{ marginTop: '8px' }}
+                                                    onClick={() => {
+                                                        setExpandedCats((prev) => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(skillCat.id)) next.delete(skillCat.id);
+                                                            else next.add(skillCat.id);
+                                                            return next;
+                                                        });
+                                                    }}
+                                                >
+                                                    {expanded ? 'Show less' : `Show ${hiddenCount} more`}
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         )}
                     </div>
