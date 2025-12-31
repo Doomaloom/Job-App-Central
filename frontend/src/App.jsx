@@ -573,7 +573,7 @@ function App() {
                 <div className="panel panel--padded" style={{ width: 'min(520px, 92vw)' }}>
                     <h2 style={{ marginTop: 0 }}>Sign in to Job App Central</h2>
                     <p style={{ color: '#555' }}>Use Google to sign in and sync your profile/applications.</p>
-                    <button className="btn btn--primary" onClick={signInWithGoogle} style={{ width: '100%', padding: '10px 14px' }}>
+                    <button className="btn btn--primary btn--lg" onClick={signInWithGoogle} style={{ width: '100%' }}>
                         Continue with Google
                     </button>
                 </div>
@@ -593,13 +593,13 @@ function App() {
                     <div style={{ fontSize: '0.85em', color: '#666', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {session?.user?.email || ''}
                     </div>
-                    <button onClick={signOut} className="btn" style={{ padding: '6px 10px' }}>
+                    <button onClick={signOut} className="btn btn--sm">
                         Sign out
                     </button>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h2>Job Applications</h2>
-                    <button onClick={handleCreateApplication} className="btn" style={{ padding: '5px 10px' }}>+</button>
+                    <button onClick={handleCreateApplication} className="btn btn--icon btn--primary" aria-label="Create application" title="Create application">+</button>
                 </div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                     {(applications || []).map((app) => (
@@ -614,8 +614,7 @@ function App() {
                                 </Link>
                                 <button
                                     onClick={() => handleDeleteApplication(app.id)}
-                                    className="btn btn--danger"
-                                    style={{ minWidth: '32px' }}
+                                    className="btn btn--danger btn--icon"
                                     aria-label={`Delete ${app.jobTitle}`}
                                     title="Delete application"
                                 >
@@ -932,28 +931,32 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
             </div>
 
             {/* Tabs Navigation */}
-            <div style={{ borderBottom: '1px solid #ccc', marginBottom: '20px' }}>
+            <div className="btnRow" style={{ marginBottom: '20px', flexWrap: 'wrap' }}>
                 <button
+                    type="button"
                     onClick={() => setActiveTab('details')}
-                    style={{ padding: '10px 20px', border: 'none', borderBottom: activeTab === 'details' ? '2px solid blue' : 'none', backgroundColor: 'transparent', cursor: 'pointer' }}
+                    className={activeTab === 'details' ? 'btn btn--primary btn--sm' : 'btn btn--sm'}
                 >
                     Job Details
                 </button>
                 <button
+                    type="button"
                     onClick={() => setActiveTab('resume')}
-                    style={{ padding: '10px 20px', border: 'none', borderBottom: activeTab === 'resume' ? '2px solid blue' : 'none', backgroundColor: 'transparent', cursor: 'pointer' }}
+                    className={activeTab === 'resume' ? 'btn btn--primary btn--sm' : 'btn btn--sm'}
                 >
                     Resume Editor
                 </button>
                 <button
+                    type="button"
                     onClick={() => setActiveTab('coverletter')}
-                    style={{ padding: '10px 20px', border: 'none', borderBottom: activeTab === 'coverletter' ? '2px solid blue' : 'none', backgroundColor: 'transparent', cursor: 'pointer' }}
+                    className={activeTab === 'coverletter' ? 'btn btn--primary btn--sm' : 'btn btn--sm'}
                 >
                     Cover Letter
                 </button>
                 <button
+                    type="button"
                     onClick={() => setActiveTab('preview')}
-                    style={{ padding: '10px 20px', border: 'none', borderBottom: activeTab === 'preview' ? '2px solid blue' : 'none', backgroundColor: 'transparent', cursor: 'pointer' }}
+                    className={activeTab === 'preview' ? 'btn btn--primary btn--sm' : 'btn btn--sm'}
                 >
                     Preview
                 </button>

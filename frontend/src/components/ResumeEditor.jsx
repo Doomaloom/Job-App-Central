@@ -395,7 +395,7 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
                                     <button
                                         type="button"
                                         onClick={() => handleAddCourseFromBase(course)}
-                                        style={{ border: '1px solid #ccc', background: '#fff', borderRadius: '6px', padding: '2px 6px', cursor: 'pointer' }}
+                                        className="btn btn--sm btn--add"
                                         disabled={alreadyAdded}
                                     >
                                         {alreadyAdded ? 'Added' : 'Add'}
@@ -419,7 +419,7 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
                         }}
                         style={{ flexGrow: 1 }}
                     />
-                    <button type="button" onClick={handleAddCourse}>Add</button>
+                    <button type="button" onClick={handleAddCourse} className="btn btn--add">Add</button>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                     {relevantCourses.map((course, idx) => (

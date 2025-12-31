@@ -105,9 +105,28 @@ h4 {
   cursor: pointer;
 }
 
+.btn:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.btn--sm {
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}
+
+.btn--lg {
+  padding: 10px 14px;
+}
+
+.btn--icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
 }
 
 .btn--primary {
@@ -127,10 +146,18 @@ h4 {
   background: #f2fff6;
 }
 
+.btn--add:hover:not(:disabled) {
+  background: #e8fff0;
+}
+
 .btn--danger {
   border-color: var(--danger);
   color: var(--danger);
   background: var(--danger-bg);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #ffe6e6;
 }
 
 .btnRow {
@@ -174,4 +201,3 @@ h4 {
   border-radius: 8px;
   background: #fafafa;
 }
-

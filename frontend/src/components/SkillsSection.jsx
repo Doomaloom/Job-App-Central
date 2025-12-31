@@ -47,7 +47,7 @@ function SkillsSection({
                                             {(Array.isArray(cat.catSkills) && cat.catSkills.length > 3) ? '…' : ''}
                                         </div>
                                     </div>
-                                    <button type="button" onClick={() => onImportSkillCategory(cat)} disabled={alreadyAdded} style={buttonStyle}>
+                                    <button type="button" onClick={() => onImportSkillCategory(cat)} disabled={alreadyAdded} className="btn btn--add btn--sm">
                                         {alreadyAdded ? 'Added' : 'Add'}
                                     </button>
                                 </div>
@@ -56,7 +56,7 @@ function SkillsSection({
                     </div>
                 </div>
             )}
-            <button type="button" onClick={onAddSkillCategory} style={{ ...(addButtonStyle || buttonStyle), marginBottom: '10px' }}>Add New Skill Category</button>
+            <button type="button" onClick={onAddSkillCategory} className="btn btn--add" style={{ marginBottom: '10px' }}>Add New Skill Category</button>
             <div>
                 {(skillCategories || []).map(skillCat => (
                     <div key={skillCat.id} style={{ padding: '10px', border: '1px solid #ccc', marginBottom: '10px', backgroundColor: 'white' }}>
@@ -84,8 +84,8 @@ function SkillsSection({
                                     {!skillCat.catSkills && <span style={{ color: '#777' }}>No skills listed.</span>}
                                 </div>
                                 <div style={{ marginTop: '10px' }}>
-                                    <button type="button" onClick={() => setEditingSkillCatId(skillCat.id)} style={buttonStyle}>Edit</button>
-                                    <button type="button" onClick={() => onRemoveSkillCategory(skillCat.id)} style={{ ...(dangerButtonStyle || buttonStyle), marginLeft: '10px' }}>Remove</button>
+                                    <button type="button" onClick={() => setEditingSkillCatId(skillCat.id)} className="btn">Edit</button>
+                                    <button type="button" onClick={() => onRemoveSkillCategory(skillCat.id)} className="btn btn--danger" style={{ marginLeft: '10px' }}>Remove</button>
                                 </div>
                             </div>
                         )}

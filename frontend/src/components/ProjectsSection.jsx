@@ -47,7 +47,7 @@ function ProjectsSection({
                                         <div style={{ fontWeight: 600 }}>{proj.projectTitle || 'Untitled Project'}</div>
                                         <div style={{ color: '#555', fontSize: '0.9em' }}>{proj.projectDate}</div>
                                     </div>
-                                    <button type="button" onClick={() => onImportProject(proj)} disabled={alreadyAdded} style={buttonStyle}>
+                                    <button type="button" onClick={() => onImportProject(proj)} disabled={alreadyAdded} className="btn btn--add btn--sm">
                                         {alreadyAdded ? 'Added' : 'Add'}
                                     </button>
                                 </div>
@@ -56,8 +56,10 @@ function ProjectsSection({
                     </div>
                 </div>
             )}
-            <button type="button" onClick={onGetProjects} style={{ ...(addButtonStyle || buttonStyle), marginBottom: '10px', marginRight: '10px' }}>Get Github Projects</button>
-            <button type="button" onClick={onAddProject} style={{ ...(addButtonStyle || buttonStyle), marginBottom: '10px' }}>Add New Project</button>
+            <div className="btnRow" style={{ marginBottom: '10px' }}>
+                <button type="button" onClick={onGetProjects} className="btn btn--primary">Get GitHub Projects</button>
+                <button type="button" onClick={onAddProject} className="btn btn--add">Add New Project</button>
+            </div>
             <SortableContext
                 items={projects.map(p => p.id)}
                 strategy={verticalListSortingStrategy}
@@ -74,8 +76,8 @@ function ProjectsSection({
                             <div>
                                 <h4>{project.projectTitle}</h4>
                                 <div style={{ marginTop: '10px' }}>
-                                    <button type="button" onClick={() => setEditingProjectId(project.id)} style={buttonStyle}>Edit</button>
-                                    <button type="button" onClick={() => onRemoveProject(project.id)} style={{ ...(dangerButtonStyle || buttonStyle), marginLeft: '10px' }}>Remove</button>
+                                    <button type="button" onClick={() => setEditingProjectId(project.id)} className="btn">Edit</button>
+                                    <button type="button" onClick={() => onRemoveProject(project.id)} className="btn btn--danger" style={{ marginLeft: '10px' }}>Remove</button>
                                 </div>
                             </div>
                         )}

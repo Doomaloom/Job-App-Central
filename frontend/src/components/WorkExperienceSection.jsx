@@ -46,7 +46,7 @@ function WorkExperienceSection({
                                         <div style={{ fontWeight: 600 }}>{job.jobTitle || 'Untitled Job'}</div>
                                         <div style={{ color: '#555', fontSize: '0.9em' }}>{job.jobEmployer}</div>
                                     </div>
-                                    <button type="button" onClick={() => onImportJob(job)} disabled={alreadyAdded} style={buttonStyle}>
+                                    <button type="button" onClick={() => onImportJob(job)} disabled={alreadyAdded} className="btn btn--add btn--sm">
                                         {alreadyAdded ? 'Added' : 'Add'}
                                     </button>
                                 </div>
@@ -55,7 +55,7 @@ function WorkExperienceSection({
                     </div>
                 </div>
             )}
-            <button type="button" onClick={onAddJob} style={{ ...(addButtonStyle || buttonStyle), marginBottom: '10px' }}>Add New Job</button>
+            <button type="button" onClick={onAddJob} className="btn btn--add" style={{ marginBottom: '10px' }}>Add New Job</button>
             <SortableContext
                 items={jobs.map(j => j.id)}
                 strategy={verticalListSortingStrategy}
@@ -72,8 +72,8 @@ function WorkExperienceSection({
                             <div>
                                 <h4>{job.jobTitle} at {job.jobEmployer}</h4>
                                 <div style={{ marginTop: '10px' }}>
-                                    <button type="button" onClick={() => setEditingJobId(job.id)} style={buttonStyle}>Edit</button>
-                                    <button type="button" onClick={() => onRemoveJob(job.id)} style={{ ...(dangerButtonStyle || buttonStyle), marginLeft: '10px' }}>Remove</button>
+                                    <button type="button" onClick={() => setEditingJobId(job.id)} className="btn">Edit</button>
+                                    <button type="button" onClick={() => onRemoveJob(job.id)} className="btn btn--danger" style={{ marginLeft: '10px' }}>Remove</button>
                                 </div>
                             </div>
                         )}

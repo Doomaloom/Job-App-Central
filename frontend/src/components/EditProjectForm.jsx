@@ -162,7 +162,7 @@ function EditProjectForm({ project, onSave, onCancel }) {
                             }}
                             style={{ flexGrow: 1 }}
                         />
-                        <button type="button" onClick={handleAddTech}>Add</button>
+                        <button type="button" onClick={handleAddTech} className="btn btn--add">Add</button>
                     </div>
                     <DndContext collisionDetection={closestCenter} onDragEnd={handleTechDragEnd}>
                         <SortableContext
@@ -200,7 +200,7 @@ function EditProjectForm({ project, onSave, onCancel }) {
                             }}
                             style={{ flexGrow: 1 }}
                         />
-                        <button type="button" onClick={handleAddPoint}>Add</button>
+                        <button type="button" onClick={handleAddPoint} className="btn btn--add">Add</button>
                     </div>
                     <DndContext collisionDetection={closestCenter} onDragEnd={handlePointDragEnd}>
                         <SortableContext
@@ -223,8 +223,8 @@ function EditProjectForm({ project, onSave, onCancel }) {
                 </div>
             </div>
             <div style={{ marginTop: '10px' }}>
-                <button type="button" onClick={handleSave}>Save</button>
-                <button type="button" onClick={onCancel} style={{ marginLeft: '10px' }}>Cancel</button>
+                <button type="button" onClick={handleSave} className="btn btn--add">Save</button>
+                <button type="button" onClick={onCancel} className="btn" style={{ marginLeft: '10px' }}>Cancel</button>
             </div>
         </div>
     );

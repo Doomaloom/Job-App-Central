@@ -88,7 +88,7 @@ function ChipsEditor({ value, onChange, placeholder = 'Add an item…', addLabel
                         }
                     }}
                 />
-                <button type="button" onClick={addItem} style={addButtonStyle}>
+                <button type="button" onClick={addItem} className="btn btn--add">
                     {addLabel}
                 </button>
             </div>

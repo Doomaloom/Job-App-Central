@@ -27,6 +27,7 @@ function ObjectiveSection({ objective, onUpdateObjective, baseObjective }) {
                         type="button"
                         onClick={() => onUpdateObjective(baseObjective)}
                         disabled={objective === baseObjective}
+                        className="btn btn--sm"
                     >
                         {objective === baseObjective ? 'Using Profile Objective' : 'Use Profile Objective'}
                     </button>
@@ -41,14 +42,14 @@ function ObjectiveSection({ objective, onUpdateObjective, baseObjective }) {
                         style={{ width: '100%', fontFamily: 'monospace' }}
                     ></textarea>
                     <div style={{ marginTop: '10px' }}>
-                        <button onClick={handleSave}>Save</button>
-                        <button onClick={handleCancel} style={{ marginLeft: '10px' }}>Cancel</button>
+                        <button type="button" onClick={handleSave} className="btn btn--add">Save</button>
+                        <button type="button" onClick={handleCancel} className="btn" style={{ marginLeft: '10px' }}>Cancel</button>
                     </div>
                 </div>
             ) : (
                 <div>
                     <p>{objective}</p>
-                    <button onClick={() => setEditing(true)}>Edit</button>
+                    <button type="button" onClick={() => setEditing(true)} className="btn">Edit</button>
                 </div>
             )}
         </div>
