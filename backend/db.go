@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"time"
 
@@ -28,6 +29,13 @@ func newDBStore(ctx context.Context) (*dbStore, error) {
 	cfg.MaxConnLifetime = 30 * time.Minute
 	cfg.MaxConnIdleTime = 5 * time.Minute
 
+	// Some hosts/environments (including certain container networks) don't have IPv6 egress.
+	// Supabase DNS can return AAAA records; force IPv4 to avoid "network is unreachable" on IPv6 dial.
+	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+	cfg.ConnConfig.DialFunc = func(ctx context.Context, _ string, addr string) (net.Conn, error) {
+		return dialer.DialContext(ctx, "tcp4", addr)
+	}
+
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create db pool: %w", err)
@@ -48,4 +56,3 @@ func (s *dbStore) Close() {
 		s.pool.Close()
 	}
 }
-
