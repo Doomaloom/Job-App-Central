@@ -7,7 +7,6 @@ function SortableItem({ id, children }) {
         attributes,
         listeners,
         setNodeRef,
-        setActivatorNodeRef,
         transform,
         transition,
     } = useSortable({ id });
@@ -19,25 +18,20 @@ function SortableItem({ id, children }) {
         border: '1px solid #ccc',
         marginBottom: '10px',
         backgroundColor: 'white',
+        cursor: 'grab',
+    };
+
+    const safeListeners = {
+        ...listeners,
+        onPointerDown: (e) => {
+            if (e?.target?.closest?.('button, input, textarea, select, a')) return;
+            listeners?.onPointerDown?.(e);
+        },
     };
 
     return (
-        <div ref={setNodeRef} style={style}>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <div style={{ flexGrow: 1 }}>
-                    {children}
-                </div>
-                <button
-                    type="button"
-                    ref={setActivatorNodeRef}
-                    {...attributes}
-                    {...listeners}
-                    aria-label="Drag to reorder"
-                    style={{ cursor: 'grab', border: '1px solid #ccc', background: '#f5f5f5', padding: '6px', borderRadius: '6px' }}
-                >
-                    ↕
-                </button>
-            </div>
+        <div ref={setNodeRef} style={style} {...attributes} {...safeListeners}>
+            {children}
         </div>
     );
 }

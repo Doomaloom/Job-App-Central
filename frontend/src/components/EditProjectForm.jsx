@@ -4,7 +4,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy, rectSortingStr
 import { CSS } from '@dnd-kit/utilities';
 
 function SortablePill({ id, label, onRemove, ariaLabel }) {
-    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition } = useSortable({ id });
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
@@ -16,27 +16,34 @@ function SortablePill({ id, label, onRemove, ariaLabel }) {
         backgroundColor: '#e7f1ff',
         marginBottom: '6px',
         marginRight: '6px',
+        cursor: 'grab',
     };
+
+    const safeListeners = {
+        ...listeners,
+        onPointerDown: (e) => {
+            if (e?.target?.closest?.('button, input, textarea, select, a')) return;
+            listeners?.onPointerDown?.(e);
+        },
+    };
+
     return (
-        <span ref={setNodeRef} style={style}>
+        <span ref={setNodeRef} style={style} {...attributes} {...safeListeners} aria-label={ariaLabel}>
             <span>{label}</span>
-            <button type="button" onClick={onRemove} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>×</button>
             <button
                 type="button"
-                ref={setActivatorNodeRef}
-                {...attributes}
-                {...listeners}
-                aria-label={ariaLabel}
-                style={{ cursor: 'grab', border: '1px solid #ccc', background: '#f5f5f5', padding: '4px 6px', borderRadius: '6px' }}
+                onClick={onRemove}
+                onPointerDown={(e) => e.stopPropagation()}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
             >
-                ↕
+                ×
             </button>
         </span>
     );
 }
 
 function SortablePointRow({ id, label, onRemove }) {
-    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition } = useSortable({ id });
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
@@ -47,20 +54,27 @@ function SortablePointRow({ id, label, onRemove }) {
         padding: '8px',
         borderRadius: '6px',
         marginBottom: '6px',
+        cursor: 'grab',
     };
+
+    const safeListeners = {
+        ...listeners,
+        onPointerDown: (e) => {
+            if (e?.target?.closest?.('button, input, textarea, select, a')) return;
+            listeners?.onPointerDown?.(e);
+        },
+    };
+
     return (
-        <div ref={setNodeRef} style={style}>
+        <div ref={setNodeRef} style={style} {...attributes} {...safeListeners}>
             <span style={{ flexGrow: 1 }}>{label}</span>
-            <button type="button" onClick={onRemove} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>×</button>
             <button
                 type="button"
-                ref={setActivatorNodeRef}
-                {...attributes}
-                {...listeners}
-                aria-label="Drag to reorder point"
-                style={{ cursor: 'grab', border: '1px solid #ccc', background: '#f5f5f5', padding: '6px', borderRadius: '6px' }}
+                onClick={onRemove}
+                onPointerDown={(e) => e.stopPropagation()}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
             >
-                ↕
+                ×
             </button>
         </div>
     );
