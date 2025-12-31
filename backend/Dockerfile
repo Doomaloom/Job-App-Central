@@ -5,12 +5,11 @@ FROM golang:1.25-bookworm AS builder
 WORKDIR /src
 
 # Download deps first for better caching
-COPY backend/go.mod backend/go.sum ./backend/
-WORKDIR /src/backend
+COPY go.mod go.sum ./
 RUN go mod download
 
 # Build
-COPY backend/ ./
+COPY . ./
 RUN CGO_ENABLED=0 GOOS=linux go build -o /out/jobapp-backend .
 
 FROM debian:bookworm-slim
@@ -25,10 +24,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY --from=builder /out/jobapp-backend ./jobapp-backend
-COPY backend/Resume-Stubs ./Resume-Stubs
+COPY Resume-Stubs ./Resume-Stubs
 
 ENV PORT=8080
 EXPOSE 8080
 
 CMD ["./jobapp-backend"]
-
