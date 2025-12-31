@@ -410,7 +410,11 @@ function App() {
     }, [authedFetch, session?.access_token]);
 
     const fetchApplications = async () => {
-        if (!session?.access_token) return;
+        if (!session?.access_token) {
+            setApplications([]);
+            setLoading(false);
+            return [];
+        }
         try {
             const response = await authedFetch('/api/applications');
             if (!response.ok) {
@@ -418,10 +422,14 @@ function App() {
                 throw new Error(text || `HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
-            setApplications(data);
+            const list = Array.isArray(data) ? data : [];
+            setApplications(list);
+            return list;
         } catch (e) {
+            setApplications([]);
             setError(e);
             console.error("Failed to fetch applications:", e);
+            return [];
         } finally {
             setLoading(false);
         }
@@ -530,15 +538,32 @@ function App() {
 
     useEffect(() => {
         if (authLoading) return;
-        if (!session?.access_token) {
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
         setError(null);
-        loadProfileFromServer().finally(() => {
-            fetchApplications();
-        });
+
+        let cancelled = false;
+        (async () => {
+            setLoading(true);
+            if (!session?.access_token) {
+                setApplications([]);
+                setLoading(false);
+                return;
+            }
+            try {
+                await loadProfileFromServer();
+                if (cancelled) return;
+                await fetchApplications();
+            } catch (e) {
+                if (cancelled) return;
+                setError(e);
+            } finally {
+                if (cancelled) return;
+                setLoading(false);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
     }, [authLoading, session?.access_token, loadProfileFromServer]);
 
     if (authLoading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
