@@ -9,12 +9,15 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
 
 var (
 	store    *dbStore
+	storeMu  sync.RWMutex
 	verifier *jwtVerifier
 )
 
@@ -142,13 +145,20 @@ func main() {
 		log.Fatal(err)
 	}
 
-	store, err = newDBStore(context.Background())
-	if err != nil {
-		log.Fatal(err)
+	// Try to connect to DB on boot, but don't crash-loop if the database is temporarily unreachable.
+	if s, err := newDBStore(context.Background()); err != nil {
+		log.Printf("DB not ready yet: %v", err)
+	} else {
+		storeMu.Lock()
+		store = s
+		storeMu.Unlock()
 	}
-	defer store.Close()
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write([]byte("ok\n"))
+	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Welcome to the Job Application Backend!")
@@ -162,6 +172,36 @@ func main() {
 	mux.HandleFunc("/api/optimize-resume", requireAuth(verifier, handleOptimizeResume))
 	mux.HandleFunc("/api/optimize-coverletter", requireAuth(verifier, handleOptimizeCoverLetter))
 	mux.HandleFunc("/api/github-projects", requireAuth(verifier, handleGithubProjects))
+
+	// Background DB connect/reconnect loop.
+	go func() {
+		t := time.NewTicker(5 * time.Second)
+		defer t.Stop()
+		for range t.C {
+			storeMu.RLock()
+			ready := store != nil
+			storeMu.RUnlock()
+			if ready {
+				continue
+			}
+			s, err := newDBStore(context.Background())
+			if err != nil {
+				log.Printf("DB still not ready: %v", err)
+				continue
+			}
+			storeMu.Lock()
+			// Double-check; another goroutine may have set it.
+			if store == nil {
+				store = s
+				s = nil
+				log.Printf("DB connection established")
+			}
+			storeMu.Unlock()
+			if s != nil {
+				s.Close()
+			}
+		}
+	}()
 
 	port := strings.TrimSpace(os.Getenv("PORT"))
 	if port == "" {
@@ -255,10 +295,17 @@ func handleApplications(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
+	storeMu.RLock()
+	s := store
+	storeMu.RUnlock()
+	if s == nil {
+		http.Error(w, "database not ready", http.StatusServiceUnavailable)
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
-		summaries, err := store.ListApplicationSummaries(r.Context(), userID)
+		summaries, err := s.ListApplicationSummaries(r.Context(), userID)
 		if err != nil {
 			http.Error(w, "Failed to list applications: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -273,7 +320,7 @@ func handleApplications(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		created, err := store.CreateApplication(r.Context(), userID, app)
+		created, err := s.CreateApplication(r.Context(), userID, app)
 		if err != nil {
 			http.Error(w, "Failed to create application: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -303,10 +350,17 @@ func handleApplicationByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
+	storeMu.RLock()
+	s := store
+	storeMu.RUnlock()
+	if s == nil {
+		http.Error(w, "database not ready", http.StatusServiceUnavailable)
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
-		app, err := store.GetApplication(r.Context(), userID, id)
+		app, err := s.GetApplication(r.Context(), userID, id)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, errNotFound) {
 				http.Error(w, "Application not found", http.StatusNotFound)
@@ -330,7 +384,7 @@ func handleApplicationByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		saved, err := store.UpdateApplication(r.Context(), userID, updatedApp)
+		saved, err := s.UpdateApplication(r.Context(), userID, updatedApp)
 		if err != nil {
 			if errors.Is(err, errNotFound) || errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Application not found for update", http.StatusNotFound)
@@ -343,7 +397,7 @@ func handleApplicationByID(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(saved)
 
 	case http.MethodDelete:
-		if err := store.DeleteApplication(r.Context(), userID, id); err != nil {
+		if err := s.DeleteApplication(r.Context(), userID, id); err != nil {
 			if errors.Is(err, errNotFound) || errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "Application not found", http.StatusNotFound)
 				return

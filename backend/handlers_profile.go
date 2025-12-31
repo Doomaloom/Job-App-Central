@@ -14,10 +14,17 @@ func handleProfile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
+	storeMu.RLock()
+	s := store
+	storeMu.RUnlock()
+	if s == nil {
+		http.Error(w, "database not ready", http.StatusServiceUnavailable)
+		return
+	}
 
 	switch r.Method {
 	case http.MethodGet:
-		raw, err := store.GetProfile(r.Context(), userID)
+		raw, err := s.GetProfile(r.Context(), userID)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				http.Error(w, "profile not found", http.StatusNotFound)
@@ -43,7 +50,7 @@ func handleProfile(w http.ResponseWriter, r *http.Request) {
 			raw = json.RawMessage(`{}`)
 		}
 
-		if err := store.UpsertProfile(r.Context(), userID, raw); err != nil {
+		if err := s.UpsertProfile(r.Context(), userID, raw); err != nil {
 			http.Error(w, "Failed to save profile: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -54,4 +61,3 @@ func handleProfile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
-
