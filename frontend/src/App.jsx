@@ -1060,12 +1060,13 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
                             </button>
                             {optCoverError && <span style={{ color: 'red' }}>AI optimize failed</span>}
                         </div>
-                        <CoverLetterEditor
-                            coverLetter={application?.coverLetter || defaultCoverLetter()}
-                            onChange={handleCoverLetterChange}
-                        />
-                    </div>
-                )}
+	                        <CoverLetterEditor
+	                            coverLetter={application?.coverLetter || defaultCoverLetter()}
+	                            onChange={handleCoverLetterChange}
+	                            profileName={profileHeader?.name || ''}
+	                        />
+	                    </div>
+	                )}
                 {activeTab === 'preview' && (
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
