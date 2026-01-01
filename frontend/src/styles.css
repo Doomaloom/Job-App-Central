@@ -129,6 +129,11 @@ h4 {
   padding: 0;
 }
 
+.btn--stretch {
+  align-self: stretch;
+  height: auto;
+}
+
 .btn--primary {
   background: var(--primary);
   border-color: var(--primary);

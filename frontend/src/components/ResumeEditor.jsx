@@ -1,16 +1,55 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
-import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { arrayMove, rectSortingStrategy, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import WorkExperienceSection from './WorkExperienceSection';
 import ProjectsSection from './ProjectsSection';
 import SkillsSection from './SkillsSection';
 import ObjectiveSection from './ObjectiveSection'; // Import the new component
 import EducationSection from './EducationSection'; // Import the new component
 
+function SortableCourseChip({ id, label, onRemove }) {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+    const style = {
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+        transition,
+        padding: '6px 10px',
+        borderRadius: '999px',
+        backgroundColor: '#e7f1ff',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        cursor: 'grab',
+    };
+
+    const safeListeners = {
+        ...listeners,
+        onPointerDown: (e) => {
+            if (e?.target?.closest?.('button, input, textarea, select, a')) return;
+            listeners?.onPointerDown?.(e);
+        },
+    };
+
+    return (
+        <span ref={setNodeRef} style={style} {...attributes} {...safeListeners}>
+            {label}
+            <button
+                type="button"
+                onClick={onRemove}
+                onPointerDown={(e) => e.stopPropagation()}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
+                aria-label={`Remove ${label}`}
+                title="Remove"
+            >
+                ×
+            </button>
+        </span>
+    );
+}
+
 function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
     const [resumeData, setResumeData] = useState(null);
     const [loadedKey, setLoadedKey] = useState(null);
-    const [relevantCourses, setRelevantCourses] = useState([]);
+    const [relevantCourses, setRelevantCourses] = useState([]); // [{id, text}]
     const [newCourse, setNewCourse] = useState('');
 
     useEffect(() => {
@@ -63,7 +102,7 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
             };
             setLoadedKey(key);
             setResumeData(resumeWithIds);
-            setRelevantCourses(courses);
+            setRelevantCourses(courses.map((text) => ({ id: makeId('course'), text })));
         }
     }, [application, initKey, loadedKey, resumeData]);
 
@@ -133,10 +172,11 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
     const handleAddCourseFromBase = (course) => {
         if (!course) return;
         setRelevantCourses((prev) => {
-            if (prev.map((c) => c.toLowerCase()).includes(course.toLowerCase())) return prev;
-            const updated = [...prev, course];
+            const existing = prev.map((c) => (c.text || '').toLowerCase());
+            if (existing.includes(course.toLowerCase())) return prev;
+            const updated = [...prev, { id: makeId('course'), text: course }];
             setResumeData((prevData) => {
-                const newData = { ...prevData, relevantCourses: updated };
+                const newData = { ...prevData, relevantCourses: updated.map((c) => c.text) };
                 onResumeChange(newData);
                 return newData;
             });
@@ -232,6 +272,22 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
                 const oldIndex = prevData.projects.findIndex(proj => proj.id === active.id);
                 const newIndex = prevData.projects.findIndex(proj => proj.id === over.id);
                 newData.projects = arrayMove(prevData.projects, oldIndex, newIndex);
+            } else if (active.id.startsWith('skill-')) {
+                const oldIndex = prevData.skillCategories.findIndex((cat) => cat.id === active.id);
+                const newIndex = prevData.skillCategories.findIndex((cat) => cat.id === over.id);
+                newData.skillCategories = arrayMove(prevData.skillCategories, oldIndex, newIndex);
+            } else if (active.id.startsWith('course-')) {
+                // course ids are stable objects stored in relevantCourses
+                setRelevantCourses((prev) => {
+                    const oldIndex = prev.findIndex((c) => c.id === active.id);
+                    const newIndex = prev.findIndex((c) => c.id === over.id);
+                    if (oldIndex < 0 || newIndex < 0) return prev;
+                    const updated = arrayMove(prev, oldIndex, newIndex);
+                    newData.relevantCourses = updated.map((c) => c.text);
+                    onResumeChange(newData);
+                    return updated;
+                });
+                return newData;
             }
             
             onResumeChange(newData);
@@ -252,9 +308,11 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
         const trimmed = newCourse.trim();
         if (!trimmed) return;
         setRelevantCourses((prev) => {
-            const updated = [...prev, trimmed];
+            const existing = prev.map((c) => (c.text || '').toLowerCase());
+            if (existing.includes(trimmed.toLowerCase())) return prev;
+            const updated = [...prev, { id: makeId('course'), text: trimmed }];
             setResumeData((prevData) => {
-                const newData = { ...prevData, relevantCourses: updated };
+                const newData = { ...prevData, relevantCourses: updated.map((c) => c.text) };
                 onResumeChange(newData);
                 return newData;
             });
@@ -263,11 +321,11 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
         setNewCourse('');
     };
 
-    const handleRemoveCourse = (index) => {
+    const handleRemoveCourse = (id) => {
         setRelevantCourses((prev) => {
-            const updated = prev.filter((_, i) => i !== index);
+            const updated = prev.filter((c) => c.id !== id);
             setResumeData((prevData) => {
-                const newData = { ...prevData, relevantCourses: updated };
+                const newData = { ...prevData, relevantCourses: updated.map((c) => c.text) };
                 onResumeChange(newData);
                 return newData;
             });
@@ -378,60 +436,65 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
     return (
         <div>
             <h2>Resume Editor</h2>
-            <ObjectiveSection
-                objective={resumeData.objective}
-                onUpdateObjective={handleUpdateObjective}
-                baseObjective={normalizedBaseResume.objective}
-            />
-            <div style={{ marginBottom: '16px' }}>
-                <h3>Relevant Courses</h3>
-                {normalizedBaseResume.relevantCourses.length > 0 && (
-                    <div style={{ marginBottom: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        {normalizedBaseResume.relevantCourses.map((course, idx) => {
-                            const alreadyAdded = relevantCourses.map((c) => c.toLowerCase()).includes(course.toLowerCase());
-                            return (
-                                <span key={`base-course-${idx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '999px', background: '#eef3ff' }}>
-                                    {course}
-                                    <button
-                                        type="button"
-                                        onClick={() => handleAddCourseFromBase(course)}
-                                        className="btn btn--sm btn--add"
-                                        disabled={alreadyAdded}
-                                    >
-                                        {alreadyAdded ? 'Added' : 'Add'}
-                                    </button>
-                                </span>
-                            );
-                        })}
-                    </div>
-                )}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                    <input
-                        type="text"
-                        placeholder="Add a course"
-                        value={newCourse}
-                        onChange={(e) => setNewCourse(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleAddCourse();
-                            }
-                        }}
-                        style={{ flexGrow: 1 }}
-                    />
-                    <button type="button" onClick={handleAddCourse} className="btn btn--add">Add</button>
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {relevantCourses.map((course, idx) => (
-                        <span key={`${course}-${idx}`} style={{ padding: '6px 10px', borderRadius: '999px', backgroundColor: '#e7f1ff', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                            {course}
-                            <button type="button" onClick={() => handleRemoveCourse(idx)} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>×</button>
-                        </span>
-                    ))}
-                    {relevantCourses.length === 0 && <span style={{ color: '#777' }}>No courses yet. Add one above.</span>}
-                </div>
-            </div>
             <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <ObjectiveSection
+                    objective={resumeData.objective}
+                    onUpdateObjective={handleUpdateObjective}
+                    baseObjective={normalizedBaseResume.objective}
+                />
+                <div style={{ marginBottom: '16px' }}>
+                    <h3>Relevant Courses</h3>
+                    {normalizedBaseResume.relevantCourses.length > 0 && (
+                        <div style={{ marginBottom: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {normalizedBaseResume.relevantCourses.map((course, idx) => {
+                                const alreadyAdded = relevantCourses.map((c) => (c.text || '').toLowerCase()).includes(course.toLowerCase());
+                                return (
+                                    <span key={`base-course-${idx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 10px', borderRadius: '999px', background: '#eef3ff' }}>
+                                        {course}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAddCourseFromBase(course)}
+                                            className="btn btn--sm btn--add"
+                                            disabled={alreadyAdded}
+                                        >
+                                            {alreadyAdded ? 'Added' : 'Add'}
+                                        </button>
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                        <input
+                            type="text"
+                            placeholder="Add a course"
+                            value={newCourse}
+                            onChange={(e) => setNewCourse(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddCourse();
+                                }
+                            }}
+                            style={{ flexGrow: 1 }}
+                        />
+                        <button type="button" onClick={handleAddCourse} className="btn btn--add">Add</button>
+                    </div>
+                    <SortableContext items={relevantCourses.map((c) => c.id)} strategy={rectSortingStrategy}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {relevantCourses.map((course) => (
+                                <SortableCourseChip
+                                    key={course.id}
+                                    id={course.id}
+                                    label={course.text}
+                                    onRemove={() => handleRemoveCourse(course.id)}
+                                />
+                            ))}
+                            {relevantCourses.length === 0 && <span style={{ color: '#777' }}>No courses yet. Add one above.</span>}
+                        </div>
+                    </SortableContext>
+                </div>
+
                 <WorkExperienceSection 
                     jobs={resumeData.jobs} 
                     onUpdateJob={handleUpdateJob}
@@ -450,17 +513,17 @@ function ResumeEditor({ application, onResumeChange, initKey, baseResume }) {
                     onImportProject={handleAddProjectFromBase}
                     isProjectImported={isProjectImported}
                 />
+                <SkillsSection
+                    skillCategories={resumeData.skillCategories}
+                    onUpdateSkillCategory={handleUpdateSkillCategory}
+                    onRemoveSkillCategory={handleRemoveSkillCategory}
+                    onAddSkillCategory={handleAddSkillCategory}
+                    baseSkillCategories={normalizedBaseResume.skillCategories}
+                    onImportSkillCategory={handleAddSkillCatFromBase}
+                    isSkillCategoryImported={isSkillCategoryImported}
+                />
                 {/* Other resume sections will go here */}
             </DndContext>
-            <SkillsSection
-                skillCategories={resumeData.skillCategories}
-                onUpdateSkillCategory={handleUpdateSkillCategory}
-                onRemoveSkillCategory={handleRemoveSkillCategory}
-                onAddSkillCategory={handleAddSkillCategory}
-                baseSkillCategories={normalizedBaseResume.skillCategories}
-                onImportSkillCategory={handleAddSkillCatFromBase}
-                isSkillCategoryImported={isSkillCategoryImported}
-            />
         </div>
     );
 }

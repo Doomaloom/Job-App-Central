@@ -649,7 +649,8 @@ function App() {
                                 </Link>
                                 <button
                                     onClick={() => handleDeleteApplication(app.id)}
-                                    className="btn btn--danger btn--icon"
+                                    className="btn btn--danger btn--stretch"
+                                    style={{ minWidth: '38px' }}
                                     aria-label={`Delete ${app.jobTitle}`}
                                     title="Delete application"
                                 >

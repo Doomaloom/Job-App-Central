@@ -114,6 +114,14 @@ function CandidateProfileEditor({ candidate, onCandidateChange }) {
             const oldIndex = projects.findIndex((proj) => proj.id === active.id);
             const newIndex = projects.findIndex((proj) => proj.id === over.id);
             if (oldIndex >= 0 && newIndex >= 0) update({ projects: arrayMove(projects, oldIndex, newIndex) });
+            return;
+        }
+
+        if (String(active.id).startsWith('skill-')) {
+            const cats = Array.isArray(safeCandidate.skillCategories) ? safeCandidate.skillCategories : [];
+            const oldIndex = cats.findIndex((cat) => cat.id === active.id);
+            const newIndex = cats.findIndex((cat) => cat.id === over.id);
+            if (oldIndex >= 0 && newIndex >= 0) update({ skillCategories: arrayMove(cats, oldIndex, newIndex) });
         }
     };
 
@@ -228,14 +236,13 @@ function CandidateProfileEditor({ candidate, onCandidateChange }) {
                     onRemoveProject={handleRemoveProject}
                     onAddProject={handleAddProject}
                 />
+                <SkillsSection
+                    skillCategories={safeCandidate.skillCategories || []}
+                    onUpdateSkillCategory={handleUpdateSkillCategory}
+                    onRemoveSkillCategory={handleRemoveSkillCategory}
+                    onAddSkillCategory={handleAddSkillCategory}
+                />
             </DndContext>
-
-            <SkillsSection
-                skillCategories={safeCandidate.skillCategories || []}
-                onUpdateSkillCategory={handleUpdateSkillCategory}
-                onRemoveSkillCategory={handleRemoveSkillCategory}
-                onAddSkillCategory={handleAddSkillCategory}
-            />
 
             <ObjectListSection
                 title="Certifications"

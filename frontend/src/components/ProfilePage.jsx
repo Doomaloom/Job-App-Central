@@ -196,6 +196,17 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, geminiApiKey, o
                 if (oldIndex < 0 || newIndex < 0) return cand;
                 return { ...cand, projects: arrayMove(projects, oldIndex, newIndex) };
             });
+            return;
+        }
+
+        if (String(active.id).startsWith('skill-')) {
+            updateCandidate((cand) => {
+                const cats = Array.isArray(cand.skillCategories) ? cand.skillCategories : [];
+                const oldIndex = cats.findIndex((cat) => cat.id === active.id);
+                const newIndex = cats.findIndex((cat) => cat.id === over.id);
+                if (oldIndex < 0 || newIndex < 0) return cand;
+                return { ...cand, skillCategories: arrayMove(cats, oldIndex, newIndex) };
+            });
         }
     };
 
@@ -412,35 +423,34 @@ function ProfilePage({ profile, onUpdate, onFetchGithubProjects, geminiApiKey, o
                             }
                         />
                     </SectionCard>
+                    <SectionCard title="Skills">
+                        <SkillsSection
+                            showTitle={false}
+                            skillCategories={candidate.skillCategories || []}
+                            addButtonStyle={undefined}
+                            buttonStyle={undefined}
+                            dangerButtonStyle={undefined}
+                            onAddSkillCategory={() =>
+                                updateCandidate((cand) => ({
+                                    ...cand,
+                                    skillCategories: [
+                                        ...(cand.skillCategories || []),
+                                        { id: makeId('skill'), catTitle: 'New Category', catSkills: [] },
+                                    ],
+                                }))
+                            }
+                            onUpdateSkillCategory={(updatedSkillCat) =>
+                                updateCandidate((cand) => ({
+                                    ...cand,
+                                    skillCategories: (cand.skillCategories || []).map((cat) => (cat.id === updatedSkillCat.id ? updatedSkillCat : cat)),
+                                }))
+                            }
+                            onRemoveSkillCategory={(skillCatId) =>
+                                updateCandidate((cand) => ({ ...cand, skillCategories: (cand.skillCategories || []).filter((cat) => cat.id !== skillCatId) }))
+                            }
+                        />
+                    </SectionCard>
                 </DndContext>
-
-                <SectionCard title="Skills">
-                    <SkillsSection
-                        showTitle={false}
-                        skillCategories={candidate.skillCategories || []}
-                        addButtonStyle={undefined}
-                        buttonStyle={undefined}
-                        dangerButtonStyle={undefined}
-                        onAddSkillCategory={() =>
-                            updateCandidate((cand) => ({
-                                ...cand,
-                                skillCategories: [
-                                    ...(cand.skillCategories || []),
-                                    { id: makeId('skill'), catTitle: 'New Category', catSkills: [] },
-                                ],
-                            }))
-                        }
-                        onUpdateSkillCategory={(updatedSkillCat) =>
-                            updateCandidate((cand) => ({
-                                ...cand,
-                                skillCategories: (cand.skillCategories || []).map((cat) => (cat.id === updatedSkillCat.id ? updatedSkillCat : cat)),
-                            }))
-                        }
-                        onRemoveSkillCategory={(skillCatId) =>
-                            updateCandidate((cand) => ({ ...cand, skillCategories: (cand.skillCategories || []).filter((cat) => cat.id !== skillCatId) }))
-                        }
-                    />
-                </SectionCard>
 
                 <SectionCard title="Certifications">
                     <ObjectListSection
