@@ -299,6 +299,7 @@ const JobDetailsTab = ({ application, onSave }) => {
 function App() {
     const [activeTab, setActiveTab] = useState('details'); // 'details', 'resume', 'coverletter'
     const [applications, setApplications] = useState([]);
+    const [applicationSearch, setApplicationSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
@@ -584,6 +585,19 @@ function App() {
     if (loading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading applications...</div>;
     if (error) return <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>Error: {error.message}</div>;
 
+    const normalizedSearch = applicationSearch.trim().toLowerCase();
+    const filteredApplications = (applications || []).filter((app) => {
+        if (!normalizedSearch) return true;
+        const haystack = [
+            app?.jobTitle || '',
+            app?.company || '',
+            app?.applicationStatus || '',
+        ]
+            .join(' ')
+            .toLowerCase();
+        return haystack.includes(normalizedSearch);
+    });
+
     return (
         <div className="appLayout">
             {/* Sidebar */}
@@ -601,8 +615,29 @@ function App() {
                     <h2>Job Applications</h2>
                     <button onClick={handleCreateApplication} className="btn btn--icon btn--primary" aria-label="Create application" title="Create application">+</button>
                 </div>
+                <div style={{ display: 'flex', gap: '8px', margin: '10px 0 12px 0' }}>
+                    <input
+                        className="input"
+                        type="search"
+                        value={applicationSearch}
+                        onChange={(e) => setApplicationSearch(e.target.value)}
+                        placeholder="Search applications…"
+                        aria-label="Search job applications"
+                    />
+                    {applicationSearch.trim() ? (
+                        <button
+                            type="button"
+                            className="btn btn--icon"
+                            onClick={() => setApplicationSearch('')}
+                            aria-label="Clear search"
+                            title="Clear search"
+                        >
+                            ×
+                        </button>
+                    ) : null}
+                </div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {(applications || []).map((app) => (
+                    {filteredApplications.map((app) => (
                         <li key={app.id} style={{ marginBottom: '10px' }}>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
                                 <Link to={`/application/${app.id}`} style={{ textDecoration: 'none', color: '#333', flexGrow: 1 }}>
@@ -623,6 +658,11 @@ function App() {
                             </div>
                         </li>
                     ))}
+                    {filteredApplications.length === 0 ? (
+                        <li className="muted" style={{ padding: '8px 0' }}>
+                            No applications match your search.
+                        </li>
+                    ) : null}
                 </ul>
             </div>
 

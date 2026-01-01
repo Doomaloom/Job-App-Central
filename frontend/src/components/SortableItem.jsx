@@ -14,10 +14,7 @@ function SortableItem({ id, children }) {
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        padding: '10px',
-        border: '1px solid #ccc',
         marginBottom: '10px',
-        backgroundColor: 'white',
         cursor: 'grab',
     };
 
