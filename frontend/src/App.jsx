@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
 import JobDetailsForm from './components/JobDetailsForm';
 import ResumeEditor from './components/ResumeEditor'; // Import the new component
@@ -719,6 +719,7 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
     const [previewUrls, setPreviewUrls] = useState({ resume: null, cover: null });
     const [previewLoading, setPreviewLoading] = useState(false);
     const [previewError, setPreviewError] = useState(null);
+    const lastTabRef = useRef(activeTab);
 
     useEffect(() => {
         const fetchApplicationDetail = async () => {
@@ -829,7 +830,7 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
         }
     };
 
-    const handleRefreshPreview = async (doc = previewDoc) => {
+    const handleRefreshPreview = useCallback(async (doc = previewDoc) => {
         if (!application) return;
         setPreviewError(null);
         setPreviewLoading(true);
@@ -864,7 +865,16 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
         } finally {
             setPreviewLoading(false);
         }
-    };
+    }, [application, authedFetch, previewDoc, profileHeader]);
+
+    // Auto-refresh preview whenever the Preview tab is selected.
+    useEffect(() => {
+        const prev = lastTabRef.current;
+        lastTabRef.current = activeTab;
+        if (activeTab !== 'preview') return;
+        if (prev === 'preview') return;
+        handleRefreshPreview(previewDoc);
+    }, [activeTab, handleRefreshPreview, previewDoc]);
 
     const handleSelectPreviewDoc = (doc) => {
         setPreviewDoc(doc);
