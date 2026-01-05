@@ -1,0 +1,19 @@
+.git
+.DS_Store
+
+# Local env / secrets
+.env
+.env.*
+
+# Build artifacts / caches
+jobapp-backend
+*.log
+
+.gocache/
+.gomodcache/
+.gopath/
+
+node_modules/
+dist/
+dist-ssr/
+
