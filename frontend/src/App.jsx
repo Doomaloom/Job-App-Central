@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Routes, Route, Link, useParams, useNavigate } from 'react-router-dom';
+import { Routes, Route, Link, useParams, useNavigate, useLocation } from 'react-router-dom';
 import JobDetailsForm from './components/JobDetailsForm';
 import ResumeEditor from './components/ResumeEditor'; // Import the new component
 import ProfilePage from './components/ProfilePage';
@@ -326,6 +326,7 @@ function App() {
         }
         return defaultProfile();
     });
+    const location = useLocation();
 
     useEffect(() => {
         let mounted = true;
@@ -567,6 +568,35 @@ function App() {
         };
     }, [authLoading, session?.access_token, loadProfileFromServer]);
 
+    useEffect(() => {
+        const baseTitle = 'Job App Central';
+        if (authLoading) {
+            document.title = `${baseTitle} — Loading`;
+            return;
+        }
+        if (!session) {
+            document.title = `${baseTitle} — Sign In`;
+            return;
+        }
+        if (loading) {
+            document.title = `${baseTitle} — Loading`;
+            return;
+        }
+        if (location.pathname.startsWith('/application/')) {
+            document.title = `${baseTitle} — Application`;
+            return;
+        }
+        if (location.pathname === '/profile') {
+            document.title = `${baseTitle} — Profile`;
+            return;
+        }
+        if (location.pathname === '/') {
+            document.title = `${baseTitle} — Applications`;
+            return;
+        }
+        document.title = baseTitle;
+    }, [authLoading, session, loading, location.pathname]);
+
     if (authLoading) return <div style={{ textAlign: 'center', marginTop: '50px' }}>Loading...</div>;
     if (!session) {
         return (
@@ -721,6 +751,32 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
     const [previewLoading, setPreviewLoading] = useState(false);
     const [previewError, setPreviewError] = useState(null);
     const lastTabRef = useRef(activeTab);
+
+    useEffect(() => {
+        const baseTitle = 'Job App Central';
+        if (loading) {
+            document.title = `${baseTitle} — Loading application`;
+            return;
+        }
+        if (error) {
+            document.title = `${baseTitle} — Application error`;
+            return;
+        }
+        if (!application) {
+            document.title = `${baseTitle} — Application`;
+            return;
+        }
+        const tabLabels = {
+            details: 'Job Details',
+            resume: 'Resume Editor',
+            coverletter: 'Cover Letter',
+            preview: 'Preview',
+        };
+        const tabLabel = tabLabels[activeTab] || 'Application';
+        const jobTitle = application.jobTitle || 'Application';
+        const company = application.company ? ` at ${application.company}` : '';
+        document.title = `${baseTitle} — ${tabLabel}: ${jobTitle}${company}`;
+    }, [activeTab, application, loading, error]);
 
     useEffect(() => {
         const fetchApplicationDetail = async () => {
