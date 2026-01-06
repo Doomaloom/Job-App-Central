@@ -21,8 +21,16 @@ function SortableItem({ id, children }) {
     const safeListeners = {
         ...listeners,
         onPointerDown: (e) => {
-            if (e?.target?.closest?.('button, input, textarea, select, a')) return;
+            if (e?.target?.closest?.('button, input, textarea, select, a, [contenteditable="true"]')) return;
             listeners?.onPointerDown?.(e);
+        },
+        onKeyDown: (e) => {
+            if (e?.target?.closest?.('button, input, textarea, select, a, [contenteditable="true"]')) return;
+            listeners?.onKeyDown?.(e);
+        },
+        onKeyUp: (e) => {
+            if (e?.target?.closest?.('button, input, textarea, select, a, [contenteditable="true"]')) return;
+            listeners?.onKeyUp?.(e);
         },
     };
 
