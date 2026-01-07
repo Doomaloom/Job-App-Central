@@ -184,11 +184,12 @@ func optimizeCoverLetterWithAI(parentCtx context.Context, apiKey string, req opt
 	- It must be ATS-friendly and readable by a human recruiter
 
 	STRUCTURE REQUIREMENTS:
-	- 3–4 short paragraphs total
-	- Paragraph 1: Strong hook + role + company motivation
+	- 4–5 short paragraphs total
+	- Paragraph 1: Strong hook + role + company motivation. Make sure to sate the reason for applying. And a short hook of who the applicant is and relavent background. Start off with statement of why the applicant is writing the letter, ex: "I am writing to express my interest in <Role>."
 	- Paragraph 2: Most relevant technical experience/projects mapped directly to job requirements
 	- Paragraph 3: Collaboration, learning mindset, and real-world impact
-	- Optional Paragraph 4: Brief closing with enthusiasm and call to action
+	- Paragraph 4: what sets the applicant apart and cultural fit.
+	- Optional Paragraph 5: Brief closing with enthusiasm and call to action
 
 	STYLE REQUIREMENTS:
 	- Professional, modern, and clear

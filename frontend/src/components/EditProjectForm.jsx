@@ -42,7 +42,7 @@ function SortablePill({ id, label, onRemove, ariaLabel }) {
     );
 }
 
-function SortablePointRow({ id, label, onRemove }) {
+function SortablePointRow({ id, label, onRemove, onChange }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -67,7 +67,17 @@ function SortablePointRow({ id, label, onRemove }) {
 
     return (
         <div ref={setNodeRef} style={style} {...attributes} {...safeListeners}>
-            <span style={{ flexGrow: 1 }}>{label}</span>
+            <input
+                type="text"
+                value={label}
+                onChange={(e) => onChange(e.target.value)}
+                style={{
+                    flexGrow: 1,
+                    border: '1px solid #ccd',
+                    borderRadius: '4px',
+                    padding: '4px 6px',
+                }}
+            />
             <button
                 type="button"
                 onClick={onRemove}
@@ -134,6 +144,10 @@ function EditProjectForm({ project, onSave, onCancel }) {
 
     const handleRemovePoint = (index) => {
         setProjectPoints((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const handleUpdatePoint = (index, value) => {
+        setProjectPoints((prev) => prev.map((point, i) => (i === index ? value : point)));
     };
 
     const handlePointDragEnd = (event) => {
@@ -227,6 +241,7 @@ function EditProjectForm({ project, onSave, onCancel }) {
                                         key={`point-${idx}`}
                                         id={`point-${idx}`}
                                         label={point}
+                                        onChange={(value) => handleUpdatePoint(idx, value)}
                                         onRemove={() => handleRemovePoint(idx)}
                                     />
                                 ))}

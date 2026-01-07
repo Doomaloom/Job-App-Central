@@ -3,7 +3,7 @@ import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-function SortableSkillPill({ id, label, onRemove }) {
+function SortableSkillPill({ id, label, onRemove, onChange }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -29,7 +29,17 @@ function SortableSkillPill({ id, label, onRemove }) {
 
     return (
         <span ref={setNodeRef} style={style} {...attributes} {...safeListeners}>
-            <span>{label}</span>
+            <input
+                type="text"
+                value={label}
+                onChange={(e) => onChange(e.target.value)}
+                style={{
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    minWidth: '80px',
+                }}
+            />
             <button
                 type="button"
                 onClick={onRemove}
@@ -69,6 +79,10 @@ function EditSkillCategoryForm({ skillCategory, onSave, onCancel }) {
 
     const handleRemoveSkill = (index) => {
         setSkills((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const handleUpdateSkill = (index, value) => {
+        setSkills((prev) => prev.map((skill, i) => (i === index ? value : skill)));
     };
 
     const handleDragEnd = (event) => {
@@ -122,6 +136,7 @@ function EditSkillCategoryForm({ skillCategory, onSave, onCancel }) {
                                         key={`skill-${idx}`}
                                         id={`skill-${idx}`}
                                         label={skill}
+                                        onChange={(value) => handleUpdateSkill(idx, value)}
                                         onRemove={() => handleRemoveSkill(idx)}
                                     />
                                 ))}
