@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"strings"
 )
 
 func generateApplicantHeader(data ResumeData) (string, error) {
@@ -33,17 +34,18 @@ func generateEducation(data ResumeData) (string, error) {
 		return "", err
 	}
 
-	var courses bytes.Buffer
-	for _, course := range data.RelevantCourses {
-		courses.WriteString(esc(course) + ", ")
-	}
-	// Trim trailing ", " if present.
-	if courses.Len() >= 2 {
-		courses.UnreadByte()
-		courses.UnreadByte()
+	var courseList []string
+
+	for i, course := range data.RelevantCourses {
+		courseList = append(courseList, esc(course))
+		if i < len(data.RelevantCourses)-1 {
+			courseList = append(courseList, ", ")
+		}
 	}
 
-	education := educationTemplate + courses.String() + "} \n \\resumeSubHeadingListEnd"
+	courses := strings.Join(courseList, "")
+
+	education := educationTemplate + courses + "} \n \\resumeSubHeadingListEnd"
 	return education, nil
 }
 
@@ -115,7 +117,7 @@ func generateWork(data ResumeData) (string, error) {
 		jobList.WriteString(currentJob.String())
 	}
 
-	jobsCompiled := workTemplate + jobList.String() + "\\resumeSubHeadingListEnd \n"
+	jobsCompiled := "\\vspace{-10pt}" + workTemplate + jobList.String() + "\\resumeSubHeadingListEnd \n"
 	return jobsCompiled, nil
 }
 
@@ -132,12 +134,11 @@ func generateSkills(data ResumeData) (string, error) {
 		currentSkillCat.WriteString("\\textbf{ ")
 		currentSkillCat.WriteString(esc(skillCat.CatTitle))
 		currentSkillCat.WriteString(" }{: ")
-		for _, skill := range skillCat.CatSkills {
-			currentSkillCat.WriteString(esc(skill) + ", ")
-		}
-		if currentSkillCat.Len() >= 2 {
-			currentSkillCat.UnreadByte()
-			currentSkillCat.UnreadByte()
+		for i, skill := range skillCat.CatSkills {
+			currentSkillCat.WriteString(esc(skill))
+			if i < len(skillCat.CatSkills)-1 {
+				currentSkillCat.WriteString(", ")
+			}
 		}
 		currentSkillCat.WriteString(" } \\\\ \n")
 
@@ -182,4 +183,3 @@ func generateLatexContent(data ResumeData) (string, error) {
 
 	return headTemplate + applicantHeader + objective + education + skills + projects + work + "\\end{document}", nil
 }
-

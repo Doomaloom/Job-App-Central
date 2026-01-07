@@ -53,6 +53,18 @@ func optimizeResumeWithAI(parentCtx context.Context, apiKey string, req optimize
 	- Avoid vague phrases (e.g., "worked on", "helped with")
 	- Do not repeat the same skill redundantly across bullets
 
+	WORK EXPERIENCE SPECIFIC POINT GUIDELINES:
+	- Quantify impact with metrics where possible
+	- Highlight collaboration with cross-functional teams
+	- If a role is not exactly relevant, focus on transferable skills and achievements. Try to connect the experience to the role as much as possible.
+	- Keep to at most 2-3 bullets per role if not highly relevant
+
+	PROJECT SPECIFIC POINT GUIDELINES:
+	- Emphasize technologies used and problems solved
+	- Highlight unique features, challenges, or innovations
+	- Focus on end-user impact and real-world applications
+	- Keep to at most 3-4 bullets per project
+
 	ATS OPTIMIZATION:
 	- Use keywords and phrasing from the job description where truthful
 	- Prefer concrete nouns over buzzwords
