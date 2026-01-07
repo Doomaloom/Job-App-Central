@@ -15,19 +15,24 @@ function SortablePointRow({ id, label, onRemove, onChange }) {
         padding: '8px',
         borderRadius: '6px',
         marginBottom: '6px',
-        cursor: 'grab',
-    };
-
-    const safeListeners = {
-        ...listeners,
-        onPointerDown: (e) => {
-            if (e?.target?.closest?.('button, input, textarea, select, a')) return;
-            listeners?.onPointerDown?.(e);
-        },
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...safeListeners}>
+        <div ref={setNodeRef} style={style}>
+            <span
+                {...attributes}
+                {...listeners}
+                style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '4px',
+                    background: '#c7d6f7',
+                    cursor: 'grab',
+                    display: 'inline-block',
+                    flexShrink: 0,
+                }}
+                title="Drag to reorder"
+            />
             <input
                 type="text"
                 value={label}
@@ -43,7 +48,6 @@ function SortablePointRow({ id, label, onRemove, onChange }) {
             <button
                 type="button"
                 onClick={onRemove}
-                onPointerDown={(e) => e.stopPropagation()}
                 style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
             >
                 ×
