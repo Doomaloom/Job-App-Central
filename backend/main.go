@@ -67,6 +67,7 @@ type ResumeData struct {
 	Jobs            []Job           `json:"jobs"`
 	Projects        []Project       `json:"projects"`
 	SkillCategories []SkillCategory `json:"skillCategories"`
+	Location        string          `json:"location,omitempty"`
 }
 
 type CoverLetter struct {

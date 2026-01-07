@@ -7,6 +7,7 @@ import CoverLetterEditor from './components/CoverLetterEditor';
 import { supabase } from './supabaseClient';
 
 const defaultResume = () => ({
+    location: '',
     objective: '',
     relevantCourses: [],
     jobs: [],
@@ -229,6 +230,7 @@ const mergeProfileHeader = (resume, profile) => ({
     name: profile?.name || '',
     number: profile?.number || '',
     email: profile?.email || '',
+    location: profile?.location || '',
     linkedin: normalizeHandleOrUrl(profile?.linkedin || '', 'linkedin.com/in'),
     github: normalizeHandleOrUrl(profile?.github || '', 'github.com'),
 });

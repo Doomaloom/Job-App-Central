@@ -40,11 +40,17 @@ func generateCoverLetterHead() string {
 	return head
 }
 
-func generateCoverLetterApplicantHeader(resume ResumeData) string {
-	header, err := generateApplicantHeader(resume)
-	if err != nil {
-		return ""
-	}
+func generateCoverLetterApplicantHeader(data ResumeData) string {
+	header := fmt.Sprintf(`
+	\begin{center}
+    \textbf{\Huge \scshape %s} \\ \vspace{1pt}
+    \small %s $|$ \small %s \\
+	\href{mailto:%s}{\underline{%s}} $|$
+    \href{https:/%s}{\underline{%s}} $|$
+    \href{https:/%s}{\underline{%s}}
+	\end{center}
+		`, esc(data.Name), esc(data.Phone), esc(data.Location), esc(data.Email), esc(data.Email), esc(data.LinkedIn), esc(data.LinkedIn), esc(data.Github), esc(data.Github))
+
 	// Add separation between header block and recipient block.
 	return header + "\n\\vspace{18pt}\n"
 }
