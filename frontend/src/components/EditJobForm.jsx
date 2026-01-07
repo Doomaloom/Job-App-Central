@@ -32,6 +32,7 @@ function SortablePointRow({ id, label, onRemove, onChange }) {
                 type="text"
                 value={label}
                 onChange={(e) => onChange(e.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
                 style={{
                     flexGrow: 1,
                     border: '1px solid #ccd',

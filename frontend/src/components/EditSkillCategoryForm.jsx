@@ -33,6 +33,7 @@ function SortableSkillPill({ id, label, onRemove, onChange }) {
                 type="text"
                 value={label}
                 onChange={(e) => onChange(e.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
                 style={{
                     border: 'none',
                     background: 'transparent',
