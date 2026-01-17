@@ -848,6 +848,14 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
         }
     };
 
+    const sanitizeFilePart = (value, fallback) => {
+        const raw = typeof value === 'string' ? value.trim() : '';
+        if (!raw) return fallback;
+        const matches = raw.match(/[A-Za-z0-9]+/g);
+        if (!matches || matches.length === 0) return fallback;
+        return matches.join('_');
+    };
+
     const handleGeneratePdf = async () => {
         if (!application) return;
 
@@ -876,7 +884,9 @@ function ApplicationDetail({ activeTab, setActiveTab, onApplicationUpdate, profi
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `documents_${application.company || 'application'}.zip`;
+            const positionPart = sanitizeFilePart(application.jobTitle, 'position');
+            const companyPart = sanitizeFilePart(application.company, 'company');
+            a.download = `${positionPart}_${companyPart}.zip`;
             document.body.appendChild(a);
             a.click();
             a.remove();

@@ -39,14 +39,20 @@ func handleGeneratePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zipBytes, err := zipDocuments(resumePDF, coverPDF)
+	namePart := sanitizeFilePart(app.Resume.Name, "Resume")
+	resumeFilename := fmt.Sprintf("%s_Resume.pdf", namePart)
+	coverFilename := fmt.Sprintf("%s_Cover_Letter.pdf", namePart)
+	zipBytes, err := zipDocuments(resumePDF, coverPDF, resumeFilename, coverFilename)
 	if err != nil {
 		http.Error(w, "Failed to package PDFs: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	positionPart := sanitizeFilePart(app.JobTitle, "position")
+	companyPart := sanitizeFilePart(app.Company, "company")
+	zipFilename := fmt.Sprintf("%s_%s.zip", positionPart, companyPart)
 	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", "attachment; filename=\"documents.zip\"")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", zipFilename))
 	w.Write(zipBytes)
 }
 
@@ -99,11 +105,11 @@ func compileLatexToPDF(latexPath, tmpDir, texPath string) error {
 	return nil
 }
 
-func zipDocuments(resumePDF, coverPDF []byte) ([]byte, error) {
+func zipDocuments(resumePDF, coverPDF []byte, resumeName, coverName string) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 
-	w1, err := zw.Create("resume.pdf")
+	w1, err := zw.Create(resumeName)
 	if err != nil {
 		_ = zw.Close()
 		return nil, err
@@ -113,7 +119,7 @@ func zipDocuments(resumePDF, coverPDF []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	w2, err := zw.Create("cover_letter.pdf")
+	w2, err := zw.Create(coverName)
 	if err != nil {
 		_ = zw.Close()
 		return nil, err
@@ -193,6 +199,7 @@ func generateSinglePDF(latexPath string, app Application, doc string) ([]byte, s
 
 	switch doc {
 	case "resume":
+		namePart := sanitizeFilePart(app.Resume.Name, "Resume")
 		latexContent, err := generateLatexContent(app.Resume)
 		if err != nil {
 			return nil, "", err
@@ -208,9 +215,10 @@ func generateSinglePDF(latexPath string, app Application, doc string) ([]byte, s
 		if err != nil {
 			return nil, "", fmt.Errorf("Failed to read generated resume PDF: %w", err)
 		}
-		return pdfBytes, "resume.pdf", nil
+		return pdfBytes, fmt.Sprintf("%s_Resume.pdf", namePart), nil
 
 	default:
+		namePart := sanitizeFilePart(app.Resume.Name, "Resume")
 		coverLetterLatex := generateCoverLetterLatex(app.Resume, app.CoverLetter)
 		if strings.TrimSpace(coverLetterLatex) == "" {
 			head, _ := readTemplate("coverletter_head.tex")
@@ -227,7 +235,7 @@ func generateSinglePDF(latexPath string, app Application, doc string) ([]byte, s
 		if err != nil {
 			return nil, "", fmt.Errorf("Failed to read generated cover letter PDF: %w", err)
 		}
-		return pdfBytes, "cover_letter.pdf", nil
+		return pdfBytes, fmt.Sprintf("%s_Cover.pdf", namePart), nil
 	}
 }
 
@@ -251,4 +259,32 @@ func copyStubTexFiles(tmpDir string) error {
 		}
 	}
 	return nil
+}
+
+func sanitizeFilePart(value, fallback string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return fallback
+	}
+
+	var b strings.Builder
+	prevUnderscore := false
+	for _, r := range trimmed {
+		isAlphaNum := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
+		if isAlphaNum {
+			b.WriteRune(r)
+			prevUnderscore = false
+			continue
+		}
+		if !prevUnderscore {
+			b.WriteByte('_')
+			prevUnderscore = true
+		}
+	}
+
+	out := strings.Trim(b.String(), "_")
+	if out == "" {
+		return fallback
+	}
+	return out
 }
